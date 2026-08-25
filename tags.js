@@ -159,16 +159,20 @@
     });
   }
 
-  function pickShareFile(file) {
+  function openPdfForBooks(file) {
     const pdf = asPdfFile(file, file.name);
-    const ascii = asPdfFile(file, "book.pdf");
-    try {
-      if (navigator.canShare) {
-        if (navigator.canShare({ files: [pdf] })) return pdf;
-        if (navigator.canShare({ files: [ascii] })) return ascii;
-      }
-    } catch (e) {}
-    return pdf;
+    const href = URL.createObjectURL(pdf);
+    const a = document.createElement("a");
+    a.href = href;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.type = "application/pdf";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(function () {
+      URL.revokeObjectURL(href);
+    }, 120000);
   }
 
   function clickDownload(file) {
@@ -195,30 +199,15 @@
   }
 
   function waitShareTap(file) {
-    setWait("送到書籍", true);
+    setWait("打開後按分享選書籍", true);
     return new Promise(function (resolve) {
-      let busyShare = false;
+      let busy = false;
       shareWait = function () {
-        if (busyShare) return;
-        if (!navigator.share) {
-          shareWait = null;
-          resolve(false);
-          return;
-        }
-        busyShare = true;
-        const payload = pickShareFile(file);
-        navigator.share({ files: [payload] }).then(
-          function () {
-            shareWait = null;
-            resolve(true);
-          },
-          function (err) {
-            busyShare = false;
-            if (err && err.name === "AbortError") return;
-            shareWait = null;
-            resolve(false);
-          }
-        );
+        if (busy) return;
+        busy = true;
+        shareWait = null;
+        openPdfForBooks(file);
+        resolve(true);
       };
     });
   }
