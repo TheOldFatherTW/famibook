@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./app.css?v=2"/>
+<link rel="stylesheet" href="./app.css?v=4"/>
 <script src="./config.js?v=1787662694"></script>
 <script>
 (function () {
@@ -76,7 +76,7 @@
     <p class="status" id="status">正在連接書櫃…</p>
   </div>
   <div class="invite-panel" id="invite-panel" hidden>
-    <p class="invite-hey">Hey! 打開圖書館</p>
+    <p class="invite-hey">安靜的讀本書吧!</p>
     <p class="invite-safari" id="invite-safari" hidden>請用 Safari 打開</p>
     <button type="button" class="invite-go" id="invite-go">開始</button>
     <form id="invite-name-form" hidden>
@@ -97,6 +97,7 @@
   <div class="cab-hud" id="cab-hud" hidden>
     <div class="cab-wrap">
       <div class="cab-cover">
+        <div class="cab-ring" aria-hidden="true"></div>
         <div class="cab-face"><img id="face-img" alt="" hidden/></div>
         <div class="cab-mask" aria-hidden="true"></div>
       </div>
@@ -106,8 +107,8 @@
   </div>
   <div class="tag-board" id="tag-board" hidden>
     <div class="mode-bar">
-      <button type="button" class="mode-btn is-on" id="mode-all">All</button>
-      <button type="button" class="mode-btn" id="mode-list">List</button>
+      <button type="button" class="mode-btn" id="mode-all">All</button>
+      <button type="button" class="mode-btn is-on" id="mode-list">List</button>
       <button type="button" class="mode-btn mode-find" id="mode-find" aria-label="找標籤">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l5 5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
       </button>
@@ -122,14 +123,16 @@
 <input id="cover-input" type="file" accept="image/*" hidden/>
 <div class="batch-tag-mask list-tag-mask" id="list-mask" hidden>
   <div class="list-tag-sheet" id="list-sheet">
-    <div class="batch-tag-head"><p>標籤</p><button type="button" class="batch-tag-close" id="list-close">×</button></div>
+    <div class="batch-tag-head"><p>找</p><button type="button" class="batch-tag-close" id="list-close">×</button></div>
     <div class="list-tag-body" id="list-body"></div>
   </div>
 </div>
-<div class="batch-tag-mask list-tag-mask" id="book-mask" hidden>
-  <div class="list-tag-sheet" id="book-sheet">
-    <div class="batch-tag-head"><p>這本書</p><button type="button" class="batch-tag-close" id="book-close">×</button></div>
-    <div class="list-tag-body book-actions" id="book-body"></div>
+<div class="borrow-dock" id="borrow-dock" hidden>
+  <div class="list-tag-sheet borrow-sheet">
+    <p id="borrow-title">單次租借上限 0/5</p>
+    <button type="button" class="tag-apply" id="borrow-go">
+      <span class="tag-apply-face"><span>立即租借</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    </button>
   </div>
 </div>
 <div class="home-install" id="home-install" hidden>
@@ -138,19 +141,14 @@
 </div>
 <div class="home-install pdf-wait" id="pdf-wait" hidden>
   <div class="lissajous" id="pdf-liss"></div>
-  <p>準備中...</p>
+  <p id="pdf-wait-msg">下載中…</p>
+  <button type="button" class="tag-apply" id="pdf-share" hidden>
+    <span class="tag-apply-face"><span>送到書籍</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+  </button>
 </div>
 <script src="./lissajous.js?v=2"></script>
 <script src="./gate.js?v=2"></script>
-<script src="./tags.js?v=3"></script>
-<script src="./door.js?v=3"></script>
-<script>
-document.getElementById("list-close").addEventListener("click", function () {
-  document.getElementById("list-mask").hidden = true;
-});
-document.getElementById("book-close").addEventListener("click", function () {
-  document.getElementById("book-mask").hidden = true;
-});
-</script>
+<script src="./tags.js?v=4"></script>
+<script src="./door.js?v=4"></script>
 </body>
 </html>

@@ -17,22 +17,36 @@
   const readerName = document.getElementById("reader-name");
   const gearBtn = document.getElementById("gear-btn");
   const coverInput = document.getElementById("cover-input");
+  const modeAll = document.getElementById("mode-all");
+  const modeList = document.getElementById("mode-list");
+  const modeFind = document.getElementById("mode-find");
 
   let key = "";
   let busy = false;
   let lastShelf = null;
   let filterTags = [];
-  let mode = "all";
+  let mode = "list";
+  let cwd = "";
   let offset = 0;
   const LIMIT = 40;
   let loadingMore = false;
   let total = 0;
+  let borrowMax = 5;
+  let selecting = false;
+  let picked = {};
+  let catalog = {};
+  let overTimer = 0;
 
   function setBoot(on, text) {
     if (!hall) return;
     hall.classList.toggle("is-booting", !!on);
     hall.classList.toggle("with-feed", true);
     if (statusEl && text != null) statusEl.textContent = text;
+  }
+
+  function setCabRun(on) {
+    const cover = document.querySelector("#cab-hud .cab-cover");
+    if (cover) cover.classList.toggle("is-run", !!on);
   }
 
   function showInvite() {
@@ -72,56 +86,146 @@
     cabHud.hidden = false;
   }
 
+  function pickCount() {
+    return Object.keys(picked).length;
+  }
+
+  function noteOver() {
+    if (statusEl) statusEl.textContent = "超過單次上限";
+    if (overTimer) window.clearTimeout(overTimer);
+    overTimer = window.setTimeout(function () {
+      if (statusEl && statusEl.textContent === "超過單次上限") statusEl.textContent = "";
+    }, 1800);
+  }
+
+  function paintPicked() {
+    if (!feed) return;
+    feed.querySelectorAll(".tile").forEach(function (el) {
+      el.classList.toggle("is-pick", !!(selecting && picked[el.dataset.id]));
+      const bar = el.querySelector(".tile-progress > span");
+      if (bar && picked[el.dataset.id]) {
+        const pct = picked[el.dataset.id].dlPct;
+        if (pct != null) bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
+      }
+    });
+    if (hall) hall.classList.toggle("has-borrow", pickCount() > 0);
+    if (window.FamiTags && window.FamiTags.paintBorrow) window.FamiTags.paintBorrow();
+  }
+
+  function enterSelect(item, tile) {
+    if (!item || item.kind === "folder") return;
+    selecting = true;
+    if (!picked[item.id] && pickCount() >= borrowMax) {
+      noteOver();
+      return;
+    }
+    picked[item.id] = item;
+    if (tile) tile.classList.add("is-pick");
+    paintPicked();
+  }
+
+  function toggleSelect(item, tile) {
+    if (!item || item.kind === "folder") return;
+    if (!selecting) {
+      enterSelect(item, tile);
+      return;
+    }
+    if (picked[item.id]) {
+      delete picked[item.id];
+      if (tile) tile.classList.remove("is-pick");
+      if (!pickCount()) selecting = false;
+    } else {
+      if (pickCount() >= borrowMax) {
+        noteOver();
+        return;
+      }
+      picked[item.id] = item;
+      if (tile) tile.classList.add("is-pick");
+    }
+    paintPicked();
+  }
+
+  function clearSelect() {
+    selecting = false;
+    picked = {};
+    paintPicked();
+  }
+
+  function updateModeButtons() {
+    if (modeAll) modeAll.classList.toggle("is-on", mode === "all");
+    if (modeList) modeList.classList.toggle("is-on", mode === "list");
+    if (modeFind) modeFind.classList.toggle("is-on", false);
+  }
+
   function tileEl(item) {
+    catalog[item.id] = item;
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "tile";
     btn.dataset.id = item.id;
+    if (item.kind === "folder") btn.dataset.kind = "folder";
     const img = document.createElement("img");
     img.alt = item.title || "";
-    img.src = window.FamiGate.origin() + "/thumb?book=" + encodeURIComponent(item.id) + "&k=" + encodeURIComponent(key);
-    btn.appendChild(img);
-    if (item.progress != null) {
-      const bar = document.createElement("div");
-      bar.className = "tile-progress";
-      const fill = document.createElement("span");
-      const pct = item.page_count ? Math.min(100, Math.round((item.progress / Math.max(item.page_count, 1)) * 100)) : 8;
-      fill.style.width = Math.max(8, pct) + "%";
-      bar.appendChild(fill);
-      btn.appendChild(bar);
+    if (item.has_cover) {
+      img.src = window.FamiGate.origin() + "/thumb?book=" + encodeURIComponent(item.id) + "&k=" + encodeURIComponent(key);
     }
+    btn.appendChild(img);
+    const bar = document.createElement("div");
+    bar.className = "tile-progress";
+    bar.hidden = item.kind === "folder";
+    const fill = document.createElement("span");
+    fill.style.width = "0%";
+    bar.appendChild(fill);
+    btn.appendChild(bar);
     const cap = document.createElement("span");
     cap.className = "tile-label";
-    cap.textContent = item.progress != null ? "看到 " + (item.progress + 1) : "";
-    if (cap.textContent) btn.appendChild(cap);
-    let hold = 0;
-    let timer = 0;
-    btn.addEventListener("pointerdown", () => {
-      hold = Date.now();
-      timer = setTimeout(() => {
-        timer = 0;
-        window.FamiTags.openBook(item);
-      }, 520);
+    cap.textContent = item.title || "";
+    btn.appendChild(cap);
+    if (selecting && picked[item.id]) btn.classList.add("is-pick");
+    let press = 0;
+    let sx = 0;
+    let sy = 0;
+    let fromHold = false;
+    function clearPress() {
+      if (press) {
+        window.clearTimeout(press);
+        press = 0;
+      }
+    }
+    btn.addEventListener("pointerdown", function (ev) {
+      if (ev.button && ev.button !== 0) return;
+      sx = ev.clientX;
+      sy = ev.clientY;
+      fromHold = false;
+      clearPress();
+      press = window.setTimeout(function () {
+        press = 0;
+        fromHold = true;
+        if (item.kind !== "folder") enterSelect(item, btn);
+      }, 400);
     });
-    const cancel = () => {
-      if (timer) clearTimeout(timer);
-      timer = 0;
-    };
-    btn.addEventListener("pointerup", cancel);
-    btn.addEventListener("pointercancel", cancel);
-    btn.addEventListener("click", (e) => {
-      if (Date.now() - hold > 480) {
-        e.preventDefault();
+    btn.addEventListener("pointermove", function (ev) {
+      if (!press) return;
+      if (Math.abs(ev.clientX - sx) > 14 || Math.abs(ev.clientY - sy) > 14) clearPress();
+    });
+    btn.addEventListener("pointerup", clearPress);
+    btn.addEventListener("pointercancel", clearPress);
+    btn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      if (fromHold) {
+        fromHold = false;
         return;
       }
-      openReader(item.id);
+      if (item.kind === "folder") {
+        if (selecting) return;
+        cwd = item.id;
+        mode = "list";
+        loadShelf(true);
+        return;
+      }
+      toggleSelect(item, btn);
     });
     return btn;
-  }
-
-  function openReader(bookId) {
-    const url = window.FamiGate.origin() + "/read/?book=" + encodeURIComponent(bookId) + "&k=" + encodeURIComponent(key);
-    location.href = url;
   }
 
   async function loadShelf(reset) {
@@ -130,16 +234,26 @@
     if (reset) {
       offset = 0;
       feed.innerHTML = "";
+      catalog = {};
+      updateModeButtons();
     }
     loadingMore = true;
     const tags = filterTags.length ? "&tags=" + encodeURIComponent(filterTags.join(",")) : "";
+    const view = mode === "list" ? "list" : "all";
+    const folder = mode === "list" && cwd ? "&cwd=" + encodeURIComponent(cwd) : "";
     try {
-      const x = await window.FamiGate.api("/api/shelf?offset=" + offset + "&limit=" + LIMIT + tags, key, { timeout: 20000 });
+      const x = await window.FamiGate.api(
+        "/api/shelf?view=" + view + "&offset=" + offset + "&limit=" + LIMIT + tags + folder,
+        key,
+        { timeout: 20000 }
+      );
       if (!x.res.ok || !x.j) return;
       lastShelf = x.j;
       total = x.j.total || 0;
+      if (x.j.borrow_max) borrowMax = x.j.borrow_max;
       (x.j.items || []).forEach((it) => feed.appendChild(tileEl(it)));
       offset += (x.j.items || []).length;
+      paintPicked();
     } finally {
       loadingMore = false;
     }
@@ -194,6 +308,8 @@
       if (tagBoard) tagBoard.hidden = false;
       setBoot(false, "");
       if (statusEl) statusEl.textContent = "";
+      mode = "list";
+      cwd = "";
       await loadShelf(true);
       if (typeof navigator.standalone === "boolean" && !navigator.standalone) {
         const seen = localStorage.getItem("famibook.installed");
@@ -290,6 +406,7 @@
     if (menu) menu.hidden = true;
     if (!confirm("清掉你的標籤和看到第幾頁？書還在。")) return;
     await window.FamiGate.api("/api/me/clear", key, { method: "POST", timeout: 15000 });
+    clearSelect();
     loadShelf(true);
   });
   if (coverInput) coverInput.addEventListener("change", async () => {
@@ -302,17 +419,42 @@
     if (door.j && door.j.reader) renderMe(door.j.reader);
   });
 
+  if (modeAll) modeAll.addEventListener("click", function () {
+    filterTags = [];
+    cwd = "";
+    mode = "all";
+    clearSelect();
+    loadShelf(true);
+  });
+  if (modeList) modeList.addEventListener("click", function () {
+    filterTags = [];
+    cwd = "";
+    mode = "list";
+    clearSelect();
+    loadShelf(true);
+  });
+
   window.FamiShelf = {
     reload: () => loadShelf(true),
     setFilter: (ids) => {
       filterTags = ids || [];
-      mode = filterTags.length ? "list" : "all";
-      document.getElementById("mode-all").classList.toggle("is-on", mode === "all");
-      document.getElementById("mode-list").classList.toggle("is-on", mode === "list");
+      cwd = "";
+      mode = "all";
+      clearSelect();
       loadShelf(true);
     },
-    openReader: openReader,
     key: () => key,
+    borrowMax: () => borrowMax,
+    pickCount: pickCount,
+    pickedItems: function () {
+      return Object.keys(picked).map(function (id) { return picked[id]; });
+    },
+    setDlPct: function (id, pct) {
+      if (picked[id]) picked[id].dlPct = pct;
+      paintPicked();
+    },
+    clearSelect: clearSelect,
+    setCabRun: setCabRun,
   };
 
   boot();

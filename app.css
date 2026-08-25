@@ -187,14 +187,55 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
   width: 100%;
   aspect-ratio: 1 / 1;
   border-radius: 50%;
-  overflow: hidden;
-  background: var(--card);
+  overflow: visible;
+  background: transparent;
 }
-.cab-face, .cab-face img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
-.cab-mask {
+.cab-ring {
   position: absolute;
   inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--rose-soft);
+}
+.cab-cover.is-run .cab-ring {
+  box-shadow: none;
+  background: conic-gradient(
+    from 210deg,
+    var(--accent) 0deg,
+    var(--accent-press) 90deg,
+    #400810 180deg,
+    var(--void) 270deg,
+    var(--accent) 360deg
+  );
+  animation: ins-spin 2.8s linear infinite;
+}
+@keyframes ins-spin {
+  to { transform: rotate(360deg); }
+}
+.cab-face {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 2px solid var(--bg);
+  background: var(--bg);
+  overflow: hidden;
+  z-index: 1;
+}
+.cab-face img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 50%;
+}
+.cab-mask {
+  position: absolute;
+  inset: 4px;
   z-index: 2;
+  border-radius: 50%;
 }
 .gear {
   position: absolute;
@@ -244,6 +285,27 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
   color: transparent;
 }
 .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tile.is-pick::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(229, 9, 20, 0.28);
+  z-index: 1;
+  pointer-events: none;
+}
+.tile.is-pick::after {
+  content: "";
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  z-index: 2;
+  background: var(--accent) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round' d='M6.5 12.5l3.2 3.3 8-8.4'/></svg>") center / 16px 16px no-repeat;
+  box-shadow: 0 0 0 2px #fff;
+  pointer-events: none;
+}
 .tile-progress {
   position: absolute;
   left: 0; right: 0; bottom: 0;
@@ -312,6 +374,107 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
   border-radius: 22px 22px 0 0;
 }
 .list-tag-body { min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.borrow-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  pointer-events: none;
+}
+.borrow-dock[hidden] { display: none !important; }
+.borrow-sheet {
+  pointer-events: auto;
+  min-height: 0;
+  max-height: none;
+  width: min(520px, 100%);
+  margin: 0 auto;
+  padding: 16px 16px 14px;
+  border-radius: 22px;
+  background: var(--card);
+}
+.borrow-sheet p {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+}
+button.tag-apply {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  padding: 3px;
+  border: 0;
+  border-radius: 999px;
+  background-color: var(--accent);
+  background-image: conic-gradient(
+    from 210deg,
+    var(--accent) 0deg,
+    var(--accent-press) 90deg,
+    #400810 180deg,
+    var(--void) 270deg,
+    var(--accent) 360deg
+  );
+  overflow: hidden;
+  cursor: pointer;
+  color: #fff;
+}
+button.tag-apply[hidden] {
+  display: none !important;
+}
+button.tag-apply::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  top: 50%;
+  width: 200vw;
+  height: 200vw;
+  background: conic-gradient(
+    from 0deg,
+    var(--accent) 0deg,
+    var(--accent-press) 90deg,
+    #400810 180deg,
+    var(--void) 270deg,
+    var(--accent) 360deg
+  );
+  animation: tag-apply-spin 2.4s linear infinite;
+  pointer-events: none;
+}
+@keyframes tag-apply-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+.tag-apply-face {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.tag-apply-face svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  stroke: #fff;
+}
+.hall.has-borrow #feed {
+  padding-bottom: 150px;
+}
 .batch-tag-head { display: flex; align-items: center; justify-content: space-between; margin: 0 0 12px; }
 .batch-tag-head p { margin: 0; font-size: 16px; font-weight: 700; }
 button.batch-tag-close {
@@ -342,6 +505,14 @@ button.batch-tag-close {
     border-radius: 22px;
     min-height: min(64dvh, calc(var(--vvh, 100vh) - 48px));
   }
+  .borrow-dock:not([hidden]) {
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 20px;
+  }
 }
 .kb-up { --kb: 0px; }
 .err { color: var(--accent); min-height: 1.2em; }
@@ -356,6 +527,10 @@ label { display: block; margin: 18px 0 8px; color: var(--mute); text-align: left
   margin: 0 auto 12px;
   color: var(--accent);
 }
+.pdf-wait .tag-apply {
+  width: min(280px, 90%);
+  margin: 16px auto 0;
+}
 @media (min-width: 768px) {
   .feed {
     width: min(1100px, 100%);
@@ -364,5 +539,5 @@ label { display: block; margin: 18px 0 8px; color: var(--mute); text-align: left
   .cab-hud, .tag-board { width: min(1100px, 100%); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .thinking-five span, .blobs span { animation: none; }
+  .thinking-five span, .blobs span, .cab-cover.is-run .cab-ring, button.tag-apply::before { animation: none; }
 }
