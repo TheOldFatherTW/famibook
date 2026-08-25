@@ -141,7 +141,34 @@
       setWait("下載中 " + pct + "%　" + index + "/" + total, false);
     }
     const blob = new Blob(parts, { type: "application/pdf" });
-    return new File([blob], name, { type: "application/pdf" });
+    return asPdfFile(blob, name);
+  }
+
+  function pdfFileName(raw) {
+    let name = String(raw || "book.pdf").split(/[/\\]/).pop() || "book.pdf";
+    name = name.replace(/["*/:<>?\\|]/g, "_").trim() || "book.pdf";
+    if (!/\.pdf$/i.test(name)) name += ".pdf";
+    return name;
+  }
+
+  function asPdfFile(blob, rawName) {
+    const bits = blob.slice(0, blob.size, "application/pdf");
+    return new File([bits], pdfFileName(rawName || blob.name), {
+      type: "application/pdf",
+      lastModified: Date.now(),
+    });
+  }
+
+  function pickShareFile(file) {
+    const pdf = asPdfFile(file, file.name);
+    const ascii = asPdfFile(file, "book.pdf");
+    try {
+      if (navigator.canShare) {
+        if (navigator.canShare({ files: [pdf] })) return pdf;
+        if (navigator.canShare({ files: [ascii] })) return ascii;
+      }
+    } catch (e) {}
+    return pdf;
   }
 
   function clickDownload(file) {
@@ -160,17 +187,8 @@
   }
 
   function shareOrSave(file) {
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      return navigator.share({ files: [file] }).then(
-        function () { return true; },
-        function (err) {
-          if (err && err.name === "AbortError") return false;
-          return waitShareTap(file);
-        }
-      );
-    }
     if (typeof navigator.standalone !== "boolean") {
-      clickDownload(file);
+      clickDownload(asPdfFile(file, file.name));
       return Promise.resolve(true);
     }
     return waitShareTap(file);
@@ -179,16 +197,28 @@
   function waitShareTap(file) {
     setWait("送到書籍", true);
     return new Promise(function (resolve) {
+      let busyShare = false;
       shareWait = function () {
-        shareWait = null;
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          navigator.share({ files: [file] }).then(
-            function () { resolve(true); },
-            function () { resolve(false); }
-          );
-        } else {
+        if (busyShare) return;
+        if (!navigator.share) {
+          shareWait = null;
           resolve(false);
+          return;
         }
+        busyShare = true;
+        const payload = pickShareFile(file);
+        navigator.share({ files: [payload] }).then(
+          function () {
+            shareWait = null;
+            resolve(true);
+          },
+          function (err) {
+            busyShare = false;
+            if (err && err.name === "AbortError") return;
+            shareWait = null;
+            resolve(false);
+          }
+        );
       };
     });
   }
@@ -211,7 +241,10 @@
         if (!ready) throw new Error("bake");
         const file = await fetchPdfFile(item.id, i + 1, total);
         const ok = await shareOrSave(file);
-        if (!ok) break;
+        if (!ok) {
+          window.alert("這本現在存不下來，請再試一次。");
+          break;
+        }
       }
     } catch (err) {
       window.alert("這本現在存不下來，請再試一次。");
