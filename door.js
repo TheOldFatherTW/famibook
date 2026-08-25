@@ -29,6 +29,13 @@
   let cwd = "";
   let offset = 0;
   const LIMIT = 40;
+  const FIRST = 12;
+  const THUMB_CAP = 6;
+  const THUMB_CACHE = "famibook-thumbs-v1";
+  let thumbGen = 0;
+  let thumbActive = 0;
+  const thumbWait = [];
+  const blobUrls = [];
   let loadingMore = false;
   let total = 0;
   let borrowMax = 5;
@@ -112,6 +119,136 @@
     if (window.FamiTags && window.FamiTags.paintBorrow) window.FamiTags.paintBorrow();
   }
 
+  function thumbUrl(item) {
+    return window.FamiGate.origin() + "/thumb?book=" + encodeURIComponent(item.id) + "&k=" + encodeURIComponent(key);
+  }
+
+  function thumbKey(item) {
+    const base = location.origin || "https://famibook.local";
+    return base + "/famibook-t/" + encodeURIComponent(item.id);
+  }
+
+  function resetThumbs() {
+    thumbGen += 1;
+    if (window.thumbObserver) {
+      window.thumbObserver.disconnect();
+      window.thumbObserver = null;
+    }
+    thumbWait.length = 0;
+    blobUrls.forEach(function (u) {
+      try { URL.revokeObjectURL(u); } catch (e) {}
+    });
+    blobUrls.length = 0;
+  }
+
+  function pumpThumbs() {
+    while (thumbActive < THUMB_CAP && thumbWait.length) {
+      const job = thumbWait.shift();
+      thumbActive += 1;
+      job(function () {
+        thumbActive -= 1;
+        pumpThumbs();
+      });
+    }
+  }
+
+  function readCachedThumb(cacheKey) {
+    if (!window.caches) return Promise.resolve(null);
+    return caches.open(THUMB_CACHE).then(function (cache) {
+      return cache.match(cacheKey);
+    }).then(function (res) {
+      return res ? res.blob() : null;
+    }).catch(function () {
+      return null;
+    });
+  }
+
+  function writeCachedThumb(cacheKey, blob) {
+    if (!blob || !cacheKey || !window.caches) return;
+    caches.open(THUMB_CACHE).then(function (cache) {
+      return cache.put(cacheKey, new Response(blob, { headers: { "Content-Type": blob.type || "image/jpeg" } }));
+    }).catch(function () {});
+  }
+
+  function showBlob(img, blob, onReady) {
+    const obj = URL.createObjectURL(blob);
+    blobUrls.push(obj);
+    function done() {
+      img.removeEventListener("load", onLoad);
+      img.removeEventListener("error", onErr);
+      img.classList.add("is-on");
+      if (onReady) onReady();
+    }
+    function onLoad() { done(); }
+    function onErr() { done(); }
+    img.addEventListener("load", onLoad);
+    img.addEventListener("error", onErr);
+    img.src = obj;
+  }
+
+  function bindThumb(img, url, cacheKey, gen) {
+    readCachedThumb(cacheKey).then(function (cached) {
+      if (gen !== thumbGen || !img.isConnected) return;
+      if (cached) {
+        showBlob(img, cached);
+        return;
+      }
+      function start(done) {
+        fetch(url, { mode: "cors", credentials: "omit" })
+          .then(function (res) {
+            if (!res.ok) throw new Error("bad");
+            return res.blob();
+          })
+          .then(function (blob) {
+            if (gen !== thumbGen || !img.isConnected) {
+              if (done) done();
+              return;
+            }
+            writeCachedThumb(cacheKey, blob);
+            showBlob(img, blob, done);
+          })
+          .catch(function () {
+            if (gen !== thumbGen || !img.isConnected) {
+              if (done) done();
+              return;
+            }
+            img.classList.add("is-on");
+            img.src = url;
+            if (done) done();
+          });
+      }
+      thumbWait.push(start);
+      pumpThumbs();
+    });
+  }
+
+  function watchThumb(img, item, eager) {
+    const url = thumbUrl(item);
+    const cacheKey = thumbKey(item);
+    img.dataset.thumbUrl = url;
+    img.dataset.thumbKey = cacheKey;
+    if (eager || !window.IntersectionObserver) {
+      bindThumb(img, url, cacheKey, thumbGen);
+      return;
+    }
+    if (!window.thumbObserver) {
+      window.thumbObserver = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (en) {
+            if (!en.isIntersecting) return;
+            const node = en.target;
+            window.thumbObserver.unobserve(node);
+            if (node.dataset.thumbBound) return;
+            node.dataset.thumbBound = "1";
+            bindThumb(node, node.dataset.thumbUrl, node.dataset.thumbKey, thumbGen);
+          });
+        },
+        { rootMargin: "240px 0px" }
+      );
+    }
+    window.thumbObserver.observe(img);
+  }
+
   function enterSelect(item, tile) {
     if (!item || item.kind === "folder") return;
     selecting = true;
@@ -157,7 +294,7 @@
     if (modeFind) modeFind.classList.toggle("is-on", false);
   }
 
-  function tileEl(item) {
+  function tileEl(item, index) {
     catalog[item.id] = item;
     const btn = document.createElement("button");
     btn.type = "button";
@@ -166,10 +303,9 @@
     if (item.kind === "folder") btn.dataset.kind = "folder";
     const img = document.createElement("img");
     img.alt = item.title || "";
-    if (item.has_cover) {
-      img.src = window.FamiGate.origin() + "/thumb?book=" + encodeURIComponent(item.id) + "&k=" + encodeURIComponent(key);
-    }
+    img.decoding = "async";
     btn.appendChild(img);
+    if (item.has_cover) watchThumb(img, item, index < FIRST);
     const bar = document.createElement("div");
     bar.className = "tile-progress";
     bar.hidden = item.kind === "folder";
@@ -234,6 +370,7 @@
     if (busy && !reset) return;
     if (reset) {
       offset = 0;
+      resetThumbs();
       feed.innerHTML = "";
       catalog = {};
       updateModeButtons();
@@ -252,7 +389,8 @@
       lastShelf = x.j;
       total = x.j.total || 0;
       if (x.j.borrow_max) borrowMax = x.j.borrow_max;
-      (x.j.items || []).forEach((it) => feed.appendChild(tileEl(it)));
+      const start = offset;
+      (x.j.items || []).forEach((it, i) => feed.appendChild(tileEl(it, start + i)));
       offset += (x.j.items || []).length;
       paintPicked();
     } finally {
