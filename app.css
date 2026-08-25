@@ -9,6 +9,13 @@
   --void: #000000;
   --rose: var(--accent);
   --rose-soft: #6b0f14;
+  --sheet-find-min: min(72dvh, calc(var(--vvh, 100vh) - 12px));
+  --sheet-find-max: min(86dvh, calc(var(--vvh, 100vh) - 12px));
+  --sheet-find-min-wide: min(32dvh, calc(var(--vvh, 100vh) - 48px));
+  --sheet-find-max-wide: min(80dvh, calc(var(--vvh, 100vh) - 48px));
+  --sheet-action-min-wide: min(32dvh, calc(var(--vvh, 100vh) - 48px));
+  --sheet-action-width: min(520px, 100%);
+  --apply-ring: 5px;
 }
 * {
   box-sizing: border-box;
@@ -376,8 +383,8 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
   width: 100%;
   background: var(--card);
   color: var(--ink);
-  min-height: min(72dvh, calc(var(--vvh, 100vh) - 12px));
-  max-height: min(86dvh, calc(var(--vvh, 100vh) - 12px));
+  min-height: var(--sheet-find-min);
+  max-height: var(--sheet-find-max);
   overflow: hidden;
   padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px));
   border-radius: 22px 22px 0 0;
@@ -394,7 +401,7 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
 }
 .borrow-dock[hidden] { display: none !important; }
 .batch-tag-sheet {
-  width: min(520px, 100%);
+  width: var(--sheet-action-width);
   max-height: calc(100vh - 32px);
   min-height: 0;
   height: auto;
@@ -407,11 +414,12 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
 }
 .borrow-sheet {
   pointer-events: auto;
-  display: block;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   max-height: none;
   height: auto;
-  width: min(520px, 100%);
+  width: var(--sheet-action-width);
   margin: 0 auto;
   padding: 16px 16px 14px;
   border-radius: 22px;
@@ -430,18 +438,19 @@ button.tag-apply {
   align-items: stretch;
   justify-content: center;
   width: 100%;
-  height: 44px;
+  height: 52px;
   margin: 0;
-  padding: 3px;
+  padding: var(--apply-ring);
   border: 0;
   border-radius: 999px;
   background-color: var(--accent);
   background-image: conic-gradient(
     from 210deg,
-    var(--accent) 0deg,
-    var(--accent-press) 90deg,
-    #400810 180deg,
-    var(--void) 270deg,
+    #ffffff 0deg,
+    var(--accent) 80deg,
+    var(--accent-press) 160deg,
+    #400810 240deg,
+    #ffffff 300deg,
     var(--accent) 360deg
   );
   overflow: hidden;
@@ -461,10 +470,11 @@ button.tag-apply::before {
   height: 200vw;
   background: conic-gradient(
     from 0deg,
-    var(--accent) 0deg,
-    var(--accent-press) 90deg,
-    #400810 180deg,
-    var(--void) 270deg,
+    #ffffff 0deg,
+    var(--accent) 80deg,
+    var(--accent-press) 160deg,
+    #400810 240deg,
+    #ffffff 300deg,
     var(--accent) 360deg
   );
   animation: tag-apply-spin 2.4s linear infinite;
@@ -495,6 +505,9 @@ button.tag-apply::before {
   height: 18px;
   display: block;
   stroke: #fff;
+}
+.borrow-sheet .tag-apply {
+  margin-top: auto;
 }
 .hall.has-borrow #feed {
   padding-bottom: 150px;
@@ -527,7 +540,15 @@ button.batch-tag-close {
   .list-tag-sheet {
     width: min(720px, 100%);
     border-radius: 22px;
-    min-height: min(64dvh, calc(var(--vvh, 100vh) - 48px));
+    min-height: var(--sheet-find-min-wide);
+    max-height: var(--sheet-find-max-wide);
+  }
+  .batch-tag-sheet:not(.list-tag-sheet),
+  .borrow-sheet {
+    min-height: var(--sheet-action-min-wide);
+  }
+  .hall.has-borrow #feed {
+    padding-bottom: calc(var(--sheet-action-min-wide) + 48px);
   }
 }
 .kb-up { --kb: 0px; }
