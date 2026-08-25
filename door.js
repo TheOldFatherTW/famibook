@@ -38,11 +38,7 @@
   const blobUrls = [];
   let loadingMore = false;
   let total = 0;
-  let borrowMax = 5;
-  let selecting = false;
-  let picked = {};
   let catalog = {};
-  let overTimer = 0;
 
   function setBoot(on, text) {
     if (!hall) return;
@@ -93,30 +89,33 @@
     cabHud.hidden = false;
   }
 
-  function pickCount() {
-    return Object.keys(picked).length;
-  }
-
-  function noteOver() {
-    if (statusEl) statusEl.textContent = "超過單次上限";
-    if (overTimer) window.clearTimeout(overTimer);
-    overTimer = window.setTimeout(function () {
-      if (statusEl && statusEl.textContent === "超過單次上限") statusEl.textContent = "";
-    }, 1800);
-  }
-
-  function paintPicked() {
+  function paintProgress() {
     if (!feed) return;
     feed.querySelectorAll(".tile").forEach(function (el) {
-      el.classList.toggle("is-pick", !!(selecting && picked[el.dataset.id]));
+      const item = catalog[el.dataset.id];
       const barWrap = el.querySelector(".tile-progress");
       const bar = el.querySelector(".tile-progress > span");
-      const pct = picked[el.dataset.id] && picked[el.dataset.id].dlPct;
-      if (barWrap) barWrap.hidden = pct == null;
-      if (bar && pct != null) bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
+      if (!item || item.kind === "folder" || !barWrap || !bar) {
+        if (barWrap) barWrap.hidden = true;
+        return;
+      }
+      const pages = Number(item.page_count) || 0;
+      const pos = item.progress;
+      if (pages > 0 && pos != null && pos > 0) {
+        barWrap.hidden = false;
+        bar.style.width = Math.max(2, Math.min(100, ((Number(pos) + 1) / pages) * 100)) + "%";
+      } else {
+        barWrap.hidden = true;
+      }
     });
-    if (hall) hall.classList.toggle("has-borrow", pickCount() > 0);
-    if (window.FamiTags && window.FamiTags.paintBorrow) window.FamiTags.paintBorrow();
+  }
+
+  function openReader(item) {
+    if (!item || item.kind === "folder") return;
+    const token = key;
+    location.href = "./read.html?book=" + encodeURIComponent(item.id)
+      + "&k=" + encodeURIComponent(token)
+      + "#k=" + encodeURIComponent(token);
   }
 
   function thumbUrl(item) {
@@ -249,51 +248,6 @@
     window.thumbObserver.observe(img);
   }
 
-  function enterSelect(item, tile) {
-    if (!item || item.kind === "folder") return;
-    selecting = true;
-    if (!picked[item.id] && pickCount() >= borrowMax) {
-      noteOver();
-      return;
-    }
-    picked[item.id] = item;
-    if (tile) tile.classList.add("is-pick");
-    paintPicked();
-  }
-
-  function toggleSelect(item, tile) {
-    if (!item || item.kind === "folder") return;
-    if (!selecting) {
-      enterSelect(item, tile);
-      return;
-    }
-    if (picked[item.id]) {
-      delete picked[item.id];
-      if (tile) tile.classList.remove("is-pick");
-      if (!pickCount()) selecting = false;
-    } else {
-      if (pickCount() >= borrowMax) {
-        noteOver();
-        return;
-      }
-      picked[item.id] = item;
-      if (tile) tile.classList.add("is-pick");
-    }
-    paintPicked();
-  }
-
-  function clearSelect() {
-    selecting = false;
-    picked = {};
-    paintPicked();
-  }
-
-  function updateModeButtons() {
-    if (modeAll) modeAll.classList.toggle("is-on", mode === "all");
-    if (modeList) modeList.classList.toggle("is-on", mode === "list");
-    if (modeFind) modeFind.classList.toggle("is-on", false);
-  }
-
   function tileEl(item, index) {
     catalog[item.id] = item;
     const btn = document.createElement("button");
@@ -308,61 +262,39 @@
     if (item.has_cover) watchThumb(img, item, index < FIRST);
     const bar = document.createElement("div");
     bar.className = "tile-progress";
-    bar.hidden = item.kind === "folder";
     const fill = document.createElement("span");
     fill.style.width = "0%";
     bar.appendChild(fill);
     btn.appendChild(bar);
-    bar.hidden = true;
+    const pages = Number(item.page_count) || 0;
+    const pos = item.progress;
+    if (item.kind !== "folder" && pages > 0 && pos != null && pos > 0) {
+      bar.hidden = false;
+      fill.style.width = Math.max(2, Math.min(100, ((Number(pos) + 1) / pages) * 100)) + "%";
+    } else {
+      bar.hidden = true;
+    }
     const cap = document.createElement("span");
     cap.className = "tile-label";
     cap.textContent = item.title || "";
     btn.appendChild(cap);
-    if (selecting && picked[item.id]) btn.classList.add("is-pick");
-    let press = 0;
-    let sx = 0;
-    let sy = 0;
-    let fromHold = false;
-    function clearPress() {
-      if (press) {
-        window.clearTimeout(press);
-        press = 0;
-      }
-    }
-    btn.addEventListener("pointerdown", function (ev) {
-      if (ev.button && ev.button !== 0) return;
-      sx = ev.clientX;
-      sy = ev.clientY;
-      fromHold = false;
-      clearPress();
-      press = window.setTimeout(function () {
-        press = 0;
-        fromHold = true;
-        if (item.kind !== "folder") enterSelect(item, btn);
-      }, 400);
-    });
-    btn.addEventListener("pointermove", function (ev) {
-      if (!press) return;
-      if (Math.abs(ev.clientX - sx) > 14 || Math.abs(ev.clientY - sy) > 14) clearPress();
-    });
-    btn.addEventListener("pointerup", clearPress);
-    btn.addEventListener("pointercancel", clearPress);
     btn.addEventListener("click", function (ev) {
       ev.preventDefault();
-      if (fromHold) {
-        fromHold = false;
-        return;
-      }
       if (item.kind === "folder") {
-        if (selecting) return;
         cwd = item.id;
         mode = "list";
         loadShelf(true);
         return;
       }
-      toggleSelect(item, btn);
+      openReader(item);
     });
     return btn;
+  }
+
+  function updateModeButtons() {
+    if (modeAll) modeAll.classList.toggle("is-on", mode === "all");
+    if (modeList) modeList.classList.toggle("is-on", mode === "list");
+    if (modeFind) modeFind.classList.toggle("is-on", false);
   }
 
   async function loadShelf(reset) {
@@ -388,11 +320,10 @@
       if (!x.res.ok || !x.j) return;
       lastShelf = x.j;
       total = x.j.total || 0;
-      if (x.j.borrow_max) borrowMax = x.j.borrow_max;
       const start = offset;
       (x.j.items || []).forEach((it, i) => feed.appendChild(tileEl(it, start + i)));
       offset += (x.j.items || []).length;
-      paintPicked();
+      paintProgress();
     } finally {
       loadingMore = false;
     }
@@ -545,7 +476,6 @@
     if (menu) menu.hidden = true;
     if (!confirm("清掉你的標籤和看到第幾頁？書還在。")) return;
     await window.FamiGate.api("/api/me/clear", key, { method: "POST", timeout: 15000 });
-    clearSelect();
     loadShelf(true);
   });
   if (coverInput) coverInput.addEventListener("change", async () => {
@@ -562,14 +492,12 @@
     filterTags = [];
     cwd = "";
     mode = "all";
-    clearSelect();
     loadShelf(true);
   });
   if (modeList) modeList.addEventListener("click", function () {
     filterTags = [];
     cwd = "";
     mode = "list";
-    clearSelect();
     loadShelf(true);
   });
 
@@ -579,20 +507,9 @@
       filterTags = ids || [];
       cwd = "";
       mode = "all";
-      clearSelect();
       loadShelf(true);
     },
     key: () => key,
-    borrowMax: () => borrowMax,
-    pickCount: pickCount,
-    pickedItems: function () {
-      return Object.keys(picked).map(function (id) { return picked[id]; });
-    },
-    setDlPct: function (id, pct) {
-      if (picked[id]) picked[id].dlPct = pct;
-      paintPicked();
-    },
-    clearSelect: clearSelect,
     setCabRun: setCabRun,
   };
 

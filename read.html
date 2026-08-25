@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
+<script>
+(function () {
+  function stopZoom(ev) { ev.preventDefault(); }
+  document.addEventListener("gesturestart", stopZoom, { passive: false });
+  document.addEventListener("gesturechange", stopZoom, { passive: false });
+})();
+</script>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="FamiBook"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="theme-color" content="#000000"/>
+<link rel="apple-touch-icon" href="./icons/b-180.png?v=1"/>
+<link rel="icon" type="image/png" href="./icons/b-180.png?v=1"/>
+<title>FamiBook</title>
+<script src="./config.js?v=1787662694"></script>
+<script>
+window.FAMI_WEB_READER = true;
+(function () {
+  var KEY_RE = /^[A-Za-z0-9_-]{8,128}$/;
+  var stored = "";
+  try { stored = localStorage.getItem("famibook.viewKey") || ""; } catch (e) {}
+  var cookie = "";
+  try {
+    var m = document.cookie.match(/(?:^|; )famibook\.viewKey=([^;]*)/);
+    cookie = m ? decodeURIComponent(m[1]) : "";
+  } catch (e) {}
+  var q = new URLSearchParams(location.search);
+  var k = q.get("k") || "";
+  var h = "";
+  try {
+    var raw = (location.hash || "").replace(/^#/, "");
+    if (raw.indexOf("k=") === 0) {
+      h = decodeURIComponent((raw.slice(2).split("&")[0] || "").replace(/\+/g, " "));
+    } else {
+      h = new URLSearchParams(raw).get("k") || "";
+    }
+  } catch (e) {}
+  var fromUrl = KEY_RE.test(k) ? k : KEY_RE.test(h) ? h : "";
+  var token = fromUrl || (KEY_RE.test(stored) ? stored : "") || (KEY_RE.test(cookie) ? cookie : "");
+  if (token) {
+    try { localStorage.setItem("famibook.viewKey", token); } catch (e) {}
+    q.set("k", token);
+    var pin = location.pathname + "?" + q.toString() + "#k=" + encodeURIComponent(token);
+    if (location.pathname + location.search + location.hash !== pin) {
+      history.replaceState({}, "", pin);
+    }
+  }
+  var origin = String(window.VAULT_ORIGIN || "").replace(/\/$/, "");
+  if (origin) {
+    var pre = document.createElement("link");
+    pre.rel = "preconnect";
+    pre.href = origin;
+    pre.crossOrigin = "anonymous";
+    document.head.appendChild(pre);
+    var files = ["css/global.css", "css/read.css", "css/navImage.css", "css/navMenu.css", "css/config.css", "css/mybook.css"];
+    for (var i = 0; i < files.length; i++) {
+      document.write('<link rel="stylesheet" href="' + origin + "/static/" + files[i] + '"/>');
+    }
+  }
+})();
+</script>
+<link rel="stylesheet" href="./read.css?v=1"/>
+</head>
+<body class="manga darkTheme famiWeb">
+<div id="loaderContainer">
+  <svg id="loader" viewBox="25 25 50 50">
+    <circle class="path" cx="50" cy="50" r="20" fill="none" stroke-width="2" stroke-miterlimit="10"/>
+  </svg>
+</div>
+
+<div id="topMenu" class="navMenu hidden">
+  <div class="navContainer">
+    <div id="bookInfo">
+      <button type="button" id="backShelf">書櫃</button>
+      <h2 id="bookTitle"></h2>
+      <h3 id="bookVolume" hidden></h3>
+    </div>
+    <button type="button" id="configButton" class="gear" aria-label="設定">⚙</button>
+  </div>
+</div>
+
+<div id="navImageContainer">
+  <div id="navImage">
+    <img id="imgPageLeft" alt="" />
+    <img id="imgPageRight" alt="" />
+    <div id="filters">
+      <div id="paperTexture"></div>
+      <div id="bookFold"></div>
+      <div id="lighting"></div>
+      <div id="specular"></div>
+    </div>
+    <div id="hitPrev" class="pageHit"></div>
+    <div id="hitNext" class="pageHit"></div>
+  </div>
+</div>
+
+<div id="bottomMenu" class="navMenu hidden">
+  <div class="navContainer">
+    <div id="sliderContainer">
+      <p id="pageSliderLeft"></p>
+      <input id="pageSlider" type="range" min="1" value="1" class="slider" />
+      <p id="pageSliderRight"></p>
+    </div>
+  </div>
+</div>
+
+<div id="configMenu">
+  <div id="closeMenu" class="button"><div class="icon"></div></div>
+  <div id="pageWidthContainer">
+    <p data-i18n="pageWidth">頁面寬度</p>
+    <input id="pageWidthSlider" type="range" min="10" max="100" value="100" class="slider" />
+  </div>
+  <div id="doublePageButton" class="button"><div class="icon"></div><p data-i18n="displayMode">顯示模式</p></div>
+  <div id="splitSpreadsButton" class="button enabled"><div class="icon"></div><p data-i18n="splitSpreads">跨頁切成單頁</p></div>
+  <div id="paperTextureButton" class="button"><div class="icon"></div><p data-i18n="paperTexture">紙紋</p></div>
+  <div id="bookFoldButton" class="button"><div class="icon"></div><p data-i18n="bookFold">書溝</p></div>
+  <div id="lightingButton" class="button"><div class="icon"></div><p data-i18n="lighting">真實光影</p></div>
+  <div id="sidePagesButton" class="button"><div class="icon"></div><p data-i18n="sidePages">側邊餘頁</p></div>
+  <div id="bookShadowButton" class="button"><div class="icon"></div><p data-i18n="bookShadow">書本陰影</p></div>
+  <div id="themeSelectionContainer">
+    <select id="themeSelection">
+      <option value="dark" data-i18n="darkTheme">深色主題</option>
+      <option value="light" data-i18n="lightTheme">淺色主題</option>
+    </select>
+  </div>
+  <div id="languageSelectionContainer">
+    <select id="languageSelection">
+      <option value="zh">繁體中文</option>
+      <option value="en">English</option>
+    </select>
+  </div>
+</div>
+
+<script>
+(function () {
+  document.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+  document.addEventListener("selectstart", function (e) {
+    if (e.target && e.target.closest && e.target.closest("input, textarea, select")) return;
+    e.preventDefault();
+  });
+  var origin = String(window.VAULT_ORIGIN || "").replace(/\/$/, "");
+  var book = new URLSearchParams(location.search).get("book") || "";
+  if (!origin || !book) {
+    var loader = document.getElementById("loaderContainer");
+    if (loader) loader.innerHTML = '<p class="read-miss">維護中,請5分鐘後再試</p>';
+    return;
+  }
+  var s = document.createElement("script");
+  s.src = origin + "/static/reader.js?v=8";
+  s.async = false;
+  document.body.appendChild(s);
+})();
+</script>
+</body>
+</html>
