@@ -5,10 +5,13 @@
   const listSheet = document.getElementById("list-sheet");
   const listBody = document.getElementById("list-body");
   const borrowDock = document.getElementById("borrow-dock");
+  const borrowSheet = document.getElementById("borrow-sheet");
+  const borrowHead = document.getElementById("borrow-head");
   const borrowTitle = document.getElementById("borrow-title");
+  const borrowBeans = document.getElementById("borrow-beans");
+  const borrowStatus = document.getElementById("borrow-status");
+  const borrowMeter = document.getElementById("borrow-meter");
   const borrowGo = document.getElementById("borrow-go");
-  const pdfWait = document.getElementById("pdf-wait");
-  const pdfMsg = document.getElementById("pdf-wait-msg");
   const pdfShare = document.getElementById("pdf-share");
   const PDF_CHUNK = 4 * 1024 * 1024;
   let renting = false;
@@ -60,44 +63,86 @@
     listMask.hidden = true;
   });
 
+  function clampPct(n) {
+    const x = Number(n);
+    if (!isFinite(x)) return 0;
+    return Math.max(0, Math.min(100, Math.round(x)));
+  }
+
+  function paintBeans(n, animate) {
+    if (!borrowBeans) return;
+    const spans = borrowBeans.querySelectorAll("span");
+    spans.forEach(function (s, i) {
+      s.classList.toggle("is-on", i < n);
+    });
+    if (!borrowSheet) return;
+    borrowSheet.classList.toggle("is-idle", !animate);
+    borrowSheet.classList.toggle("is-run", !!animate);
+  }
+
+  function showIdle(n, max) {
+    if (borrowHead) borrowHead.hidden = false;
+    if (borrowTitle) {
+      borrowTitle.textContent = n >= max ? "租借上限已滿" : "單次租借 " + n + "/" + max;
+    }
+    if (borrowStatus) borrowStatus.hidden = true;
+    if (borrowMeter) borrowMeter.hidden = true;
+    if (borrowGo) borrowGo.hidden = false;
+    if (pdfShare) pdfShare.hidden = true;
+    if (borrowSheet) borrowSheet.classList.remove("is-dl");
+    paintBeans(n, false);
+    if (window.FamiShelf) window.FamiShelf.setCabRun(false);
+  }
+
+  function showWork(kind, pct, index, total) {
+    if (borrowDock) borrowDock.hidden = false;
+    if (borrowHead) borrowHead.hidden = true;
+    if (borrowGo) borrowGo.hidden = true;
+    if (pdfShare) pdfShare.hidden = kind !== "share";
+    if (borrowSheet) {
+      borrowSheet.classList.toggle("is-dl", kind === "dl");
+    }
+    paintBeans(window.FamiShelf ? window.FamiShelf.pickCount() : 0, kind !== "share");
+    if (borrowStatus) {
+      borrowStatus.hidden = false;
+      if (kind === "share") {
+        borrowStatus.textContent = "打開後按分享選書籍";
+      } else {
+        const label = kind === "bake" ? "打包中" : "下載中";
+        borrowStatus.textContent = label + " " + clampPct(pct) + "%　" + index + "/" + total;
+      }
+    }
+    if (borrowMeter) {
+      borrowMeter.hidden = kind === "share";
+      const fill = borrowMeter.querySelector("span");
+      if (fill && kind !== "share") fill.style.width = clampPct(pct) + "%";
+    }
+    if (window.FamiShelf) window.FamiShelf.setCabRun(true);
+  }
+
   function paintBorrow() {
     if (!borrowDock || !window.FamiShelf) return;
     const n = window.FamiShelf.pickCount();
     const max = window.FamiShelf.borrowMax();
-    if (!n || renting) {
+    if (renting) return;
+    if (!n) {
       borrowDock.hidden = true;
       return;
     }
     borrowDock.hidden = false;
-    if (borrowTitle) {
-      borrowTitle.textContent = n >= max ? "租借上限已滿" : "單次租借上限 " + n + "/" + max;
-    }
-    if (borrowGo) {
-      const face = borrowGo.querySelector(".tag-apply-face span");
-      if (face) face.textContent = "立即租借";
-    }
+    showIdle(n, max);
   }
 
-  function setWait(text, shareOn) {
-    if (pdfWait) pdfWait.hidden = false;
-    if (pdfMsg) pdfMsg.textContent = text;
-    if (pdfShare) pdfShare.hidden = !shareOn;
-    if (window.Lissajous) window.Lissajous.mount(document.getElementById("pdf-liss"));
-    if (window.FamiShelf) window.FamiShelf.setCabRun(true);
-  }
-
-  function hideWait() {
-    if (pdfWait) pdfWait.hidden = true;
-    if (pdfShare) pdfShare.hidden = true;
-    if (window.FamiShelf) window.FamiShelf.setCabRun(false);
-  }
-
-  async function pollPdf(bookId) {
+  async function pollPdf(bookId, index, total) {
     const key = window.FamiShelf.key();
     for (let i = 0; i < 120; i++) {
       const st = await window.FamiGate.api("/api/pdf?book=" + encodeURIComponent(bookId), key, { timeout: 15000 });
-      if (st.j && st.j.state === "ready") return st.j;
+      if (st.j && st.j.state === "ready") {
+        showWork("bake", 100, index, total);
+        return st.j;
+      }
       if (st.j && st.j.state === "error") return null;
+      showWork("bake", st.j && st.j.percent, index, total);
       await new Promise((r) => setTimeout(r, 1500));
     }
     return null;
@@ -138,7 +183,7 @@
       start += buf.byteLength;
       const pct = size ? Math.round((start / size) * 100) : 0;
       window.FamiShelf.setDlPct(bookId, pct);
-      setWait("下載中 " + pct + "%　" + index + "/" + total, false);
+      showWork("dl", pct, index, total);
     }
     const blob = new Blob(parts, { type: "application/pdf" });
     return asPdfFile(blob, name);
@@ -199,7 +244,7 @@
   }
 
   function waitShareTap(file) {
-    setWait("打開後按分享選書籍", true);
+    showWork("share", 100, 1, 1);
     return new Promise(function (resolve) {
       let busy = false;
       shareWait = function () {
@@ -217,17 +262,18 @@
     const items = window.FamiShelf.pickedItems();
     if (!items.length) return;
     renting = true;
-    paintBorrow();
     const key = window.FamiShelf.key();
     const total = items.length;
-    setWait("下載中 0%　1/" + total, false);
+    showWork("bake", 0, 1, total);
     try {
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        await window.FamiGate.api("/api/pdf?book=" + encodeURIComponent(item.id), key, { method: "POST", timeout: 20000 });
-        setWait("打包中　" + (i + 1) + "/" + total, false);
-        const ready = await pollPdf(item.id);
-        if (!ready) throw new Error("bake");
+        const started = await window.FamiGate.api("/api/pdf?book=" + encodeURIComponent(item.id), key, { method: "POST", timeout: 20000 });
+        if (!(started.j && started.j.state === "ready")) {
+          showWork("bake", started.j && started.j.percent, i + 1, total);
+          const ready = await pollPdf(item.id, i + 1, total);
+          if (!ready) throw new Error("bake");
+        }
         const file = await fetchPdfFile(item.id, i + 1, total);
         const ok = await shareOrSave(file);
         if (!ok) {
@@ -239,7 +285,7 @@
       window.alert("這本現在存不下來，請再試一次。");
     } finally {
       renting = false;
-      hideWait();
+      if (window.FamiShelf) window.FamiShelf.setCabRun(false);
       window.FamiShelf.clearSelect();
     }
   }

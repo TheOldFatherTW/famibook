@@ -175,6 +175,9 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
 .thinking-five span:nth-child(3) { animation-delay: 0.24s; }
 .thinking-five span:nth-child(4) { animation-delay: 0.36s; }
 .thinking-five span:nth-child(5) { animation-delay: 0.48s; }
+.thinking-five[hidden] {
+  display: none !important;
+}
 @keyframes think-five {
   0%, 80%, 100% { opacity: 0.22; transform: scale(0.72); }
   40% { opacity: 1; transform: scale(1); }
@@ -426,10 +429,73 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
   background: var(--card);
   overflow: visible;
 }
-.borrow-sheet p {
-  margin: 0 0 12px;
+.borrow-sheet .batch-tag-head {
+  justify-content: center;
+  margin: 0 0 8px;
+}
+.borrow-sheet .batch-tag-head p {
+  width: 100%;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+.borrow-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 72px;
+  padding: 8px 0 12px;
+}
+.borrow-sheet .thinking-five {
+  height: 28px;
+  margin: 0;
+  gap: 12px;
+}
+.borrow-sheet .thinking-five span {
+  width: 14px;
+  height: 14px;
+}
+.borrow-sheet.is-idle .thinking-five span {
+  animation: none;
+  opacity: 0.32;
+  transform: scale(0.72);
+}
+.borrow-sheet.is-idle .thinking-five span.is-on {
+  opacity: 1;
+  transform: scale(1);
+}
+.borrow-sheet.is-dl .thinking-five span {
+  animation-duration: 0.7s;
+}
+.borrow-status {
+  margin: 0;
   font-size: 16px;
   font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+.borrow-meter {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: #2f2f2f;
+  overflow: hidden;
+}
+.borrow-meter > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.2s linear;
 }
 button.tag-apply {
   position: relative;
@@ -509,6 +575,9 @@ button.tag-apply::before {
 .borrow-sheet .tag-apply {
   margin-top: auto;
 }
+.borrow-sheet .tag-apply + .tag-apply {
+  margin-top: 10px;
+}
 .hall.has-borrow #feed {
   padding-bottom: 150px;
 }
@@ -554,20 +623,6 @@ button.batch-tag-close {
 .kb-up { --kb: 0px; }
 .err { color: var(--accent); min-height: 1.2em; }
 label { display: block; margin: 18px 0 8px; color: var(--mute); text-align: left; }
-.home-install.pdf-wait {
-  justify-content: center;
-  background: rgba(20, 20, 20, 0.92);
-}
-.pdf-wait .lissajous {
-  width: 88px;
-  height: 88px;
-  margin: 0 auto 12px;
-  color: var(--accent);
-}
-.pdf-wait .tag-apply {
-  width: min(280px, 90%);
-  margin: 16px auto 0;
-}
 @media (min-width: 768px) {
   .feed {
     width: min(1100px, 100%);
