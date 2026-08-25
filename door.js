@@ -168,8 +168,12 @@
       await window.FamiGate.api("/api/public", "", { timeout: 8000 }).catch(() => null);
       if (!key) {
         setBoot(false);
-        showInvite();
-        statusEl.textContent = "";
+        if (window.FAMILY_FORCE_INVITE || window.FAMILY_URL_KEY) {
+          showInvite();
+          if (statusEl) statusEl.textContent = "";
+        } else if (statusEl) {
+          statusEl.textContent = "請用邀請連結打開";
+        }
         return;
       }
       const x = await window.FamiGate.api("/api/door", key, { timeout: 20000 });
@@ -226,10 +230,14 @@
   if (nameForm) nameForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (busy) return;
+    const inviteKey = window.FAMILY_URL_KEY || window.FamiGate.currentKey();
+    if (!inviteKey) {
+      if (nameErr) nameErr.textContent = "請用邀請連結打開";
+      return;
+    }
     busy = true;
     startWait();
     const name = (nameInput.value || "").trim();
-    const inviteKey = window.FAMILY_URL_KEY || window.FamiGate.currentKey();
     try {
       const x = await window.FamiGate.api("/api/invite/name", inviteKey, {
         method: "POST",
