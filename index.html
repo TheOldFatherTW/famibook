@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
+<script>
+(function () {
+  function stopZoom(ev) { ev.preventDefault(); }
+  document.addEventListener("gesturestart", stopZoom, { passive: false });
+  document.addEventListener("gesturechange", stopZoom, { passive: false });
+})();
+</script>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="FamiBook"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="theme-color" content="#141414"/>
+<title>FamiBook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="./app.css?v=2"/>
+<script src="./config.js?v=1"></script>
+<script>
+(function () {
+  var KEY_RE = /^[A-Za-z0-9_-]{8,128}$/;
+  var stored = "";
+  try { stored = localStorage.getItem("famibook.viewKey") || ""; } catch (e) {}
+  var cookie = "";
+  try {
+    var m = document.cookie.match(/(?:^|; )famibook\.viewKey=([^;]*)/);
+    cookie = m ? decodeURIComponent(m[1]) : "";
+  } catch (e) {}
+  var q = new URLSearchParams(location.search).get("k") || "";
+  var h = "";
+  try {
+    var raw = (location.hash || "").replace(/^#/, "");
+    if (raw.indexOf("k=") === 0) {
+      h = decodeURIComponent((raw.slice(2).split("&")[0] || "").replace(/\+/g, " "));
+    } else {
+      h = new URLSearchParams(raw).get("k") || "";
+    }
+  } catch (e) {}
+  var fromUrl = KEY_RE.test(q) ? q : KEY_RE.test(h) ? h : "";
+  var token = fromUrl || (KEY_RE.test(stored) ? stored : "") || (KEY_RE.test(cookie) ? cookie : "");
+  window.FAMILY_URL_KEY = fromUrl;
+  window.FAMILY_VIEW_KEY = token;
+  if (token) {
+    try { localStorage.setItem("famibook.viewKey", token); } catch (e) {}
+    if (typeof navigator.standalone === "boolean" && !navigator.standalone) {
+      var pin = location.pathname + "?k=" + encodeURIComponent(token) + "#k=" + encodeURIComponent(token);
+      if (location.pathname + location.search + location.hash !== pin) {
+        history.replaceState({}, "", pin);
+      }
+    }
+  }
+  var origin = window.VAULT_ORIGIN;
+  if (origin) {
+    var link = document.createElement("link");
+    link.rel = "preconnect";
+    link.href = origin;
+    link.crossOrigin = "anonymous";
+    document.head.appendChild(link);
+  }
+})();
+</script>
+</head>
+<body>
+<div class="blobs" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+<div class="hall with-feed is-booting" id="hall">
+  <div class="profile">
+    <div class="lissajous" id="lissajous"></div>
+    <h1 class="brand">FamiBook</h1>
+    <p class="status" id="status">正在連接書櫃…</p>
+  </div>
+  <div class="invite-panel" id="invite-panel" hidden>
+    <p class="invite-hey">Hey! 打開圖書館</p>
+    <p class="invite-safari" id="invite-safari" hidden>請用 Safari 打開</p>
+    <button type="button" class="invite-go" id="invite-go">開始</button>
+    <form id="invite-name-form" hidden>
+      <p class="err" id="invite-name-err"></p>
+      <label for="invite-name">你叫什麼</label>
+      <div class="apple-row">
+        <input id="invite-name" autocomplete="nickname" maxlength="24" required/>
+        <button type="submit" class="apple-next" aria-label="繼續">
+          <svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="18"/><path d="M15.2 11.5L22.5 18l-7.3 6.5"/></svg>
+        </button>
+      </div>
+    </form>
+    <div class="invite-wait" id="invite-wait" hidden>
+      <div class="thinking-five" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="invite-wait-bar" id="invite-wait-bar"></div>
+    </div>
+  </div>
+  <div class="cab-hud" id="cab-hud" hidden>
+    <div class="cab-wrap">
+      <div class="cab-cover">
+        <div class="cab-face"><img id="face-img" alt="" hidden/></div>
+        <div class="cab-mask" aria-hidden="true"></div>
+      </div>
+      <button type="button" class="gear" id="gear-btn" aria-label="設定">⚙</button>
+    </div>
+    <p class="reader-name" id="reader-name"></p>
+  </div>
+  <div class="tag-board" id="tag-board" hidden>
+    <div class="mode-bar">
+      <button type="button" class="mode-btn is-on" id="mode-all">All</button>
+      <button type="button" class="mode-btn" id="mode-list">List</button>
+      <button type="button" class="mode-btn mode-find" id="mode-find" aria-label="找標籤">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l5 5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="feed" id="feed"></div>
+</div>
+<div class="gear-menu" id="gear-menu" hidden>
+  <button type="button" id="act-cover">更換頭像</button>
+  <button type="button" id="act-clear">清掉我的紀錄</button>
+</div>
+<input id="cover-input" type="file" accept="image/*" hidden/>
+<div class="batch-tag-mask list-tag-mask" id="list-mask" hidden>
+  <div class="list-tag-sheet" id="list-sheet">
+    <div class="batch-tag-head"><p>標籤</p><button type="button" class="batch-tag-close" id="list-close">×</button></div>
+    <div class="list-tag-body" id="list-body"></div>
+  </div>
+</div>
+<div class="batch-tag-mask list-tag-mask" id="book-mask" hidden>
+  <div class="list-tag-sheet" id="book-sheet">
+    <div class="batch-tag-head"><p>這本書</p><button type="button" class="batch-tag-close" id="book-close">×</button></div>
+    <div class="list-tag-body book-actions" id="book-body"></div>
+  </div>
+</div>
+<div class="home-install" id="home-install" hidden>
+  <p>請點底部分享，再選加入主畫面</p>
+  <button type="button" class="invite-go" id="home-installed">我已加入</button>
+</div>
+<div class="home-install pdf-wait" id="pdf-wait" hidden>
+  <div class="lissajous" id="pdf-liss"></div>
+  <p>準備中...</p>
+</div>
+<script src="./lissajous.js?v=2"></script>
+<script src="./gate.js?v=2"></script>
+<script src="./tags.js?v=2"></script>
+<script src="./door.js?v=2"></script>
+<script>
+document.getElementById("list-close").addEventListener("click", function () {
+  document.getElementById("list-mask").hidden = true;
+});
+document.getElementById("book-close").addEventListener("click", function () {
+  document.getElementById("book-mask").hidden = true;
+});
+</script>
+</body>
+</html>
