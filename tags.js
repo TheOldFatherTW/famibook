@@ -61,6 +61,53 @@
     return false;
   }
 
+  const PDF_CHUNK = 4 * 1024 * 1024;
+
+  function filenameFromDisposition(header, fallback) {
+    if (!header) return fallback;
+    const star = /filename\*=UTF-8''([^;]+)/i.exec(header);
+    if (star) {
+      try { return decodeURIComponent(star[1]); } catch (e) {}
+    }
+    const plain = /filename="?([^";]+)"?/i.exec(header);
+    return plain ? plain[1] : fallback;
+  }
+
+  async function savePdfFile(bookId) {
+    const key = window.FamiShelf.key();
+    const url = window.FamiGate.origin() + "/download/pdf?book=" + encodeURIComponent(bookId) + "&k=" + encodeURIComponent(key);
+    const parts = [];
+    let start = 0;
+    let total = null;
+    let name = "book.pdf";
+    while (total == null || start < total) {
+      const hintEnd = total == null ? start + PDF_CHUNK - 1 : Math.min(start + PDF_CHUNK - 1, total - 1);
+      const res = await fetch(url, { headers: { Range: "bytes=" + start + "-" + hintEnd } });
+      if (!res.ok && res.status !== 206) throw new Error("download");
+      name = filenameFromDisposition(res.headers.get("Content-Disposition"), name);
+      const buf = await res.arrayBuffer();
+      if (!buf.byteLength) break;
+      const cr = res.headers.get("Content-Range");
+      if (cr) {
+        const m = /\/(\d+)\s*$/.exec(cr);
+        if (m) total = parseInt(m[1], 10);
+      } else {
+        total = start + buf.byteLength;
+      }
+      parts.push(buf);
+      start += buf.byteLength;
+    }
+    const blob = new Blob(parts, { type: "application/pdf" });
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 4000);
+  }
+
   window.FamiTags = {
     openBook: function (item) {
       bookBody.innerHTML = "";
@@ -85,11 +132,16 @@
         const wait = document.getElementById("pdf-wait");
         wait.hidden = false;
         if (window.Lissajous) window.Lissajous.mount(document.getElementById("pdf-liss"));
-        await window.FamiGate.api("/api/pdf?book=" + encodeURIComponent(item.id), key, { method: "POST", timeout: 20000 });
-        const ok = await pollPdf(item.id);
-        wait.hidden = true;
-        if (!ok) return;
-        location.href = window.FamiGate.origin() + "/download/pdf?book=" + encodeURIComponent(item.id) + "&k=" + encodeURIComponent(key);
+        try {
+          await window.FamiGate.api("/api/pdf?book=" + encodeURIComponent(item.id), key, { method: "POST", timeout: 20000 });
+          const ok = await pollPdf(item.id);
+          if (!ok) return;
+          await savePdfFile(item.id);
+        } catch (err) {
+          window.alert("這本現在存不下來，請再試一次。");
+        } finally {
+          wait.hidden = true;
+        }
       });
       const box = document.createElement("div");
       box.style.marginTop = "12px";
