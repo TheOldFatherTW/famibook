@@ -102,11 +102,11 @@
     if (!feed) return;
     feed.querySelectorAll(".tile").forEach(function (el) {
       el.classList.toggle("is-pick", !!(selecting && picked[el.dataset.id]));
+      const barWrap = el.querySelector(".tile-progress");
       const bar = el.querySelector(".tile-progress > span");
-      if (bar && picked[el.dataset.id]) {
-        const pct = picked[el.dataset.id].dlPct;
-        if (pct != null) bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
-      }
+      const pct = picked[el.dataset.id] && picked[el.dataset.id].dlPct;
+      if (barWrap) barWrap.hidden = pct == null;
+      if (bar && pct != null) bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
     });
     if (hall) hall.classList.toggle("has-borrow", pickCount() > 0);
     if (window.FamiTags && window.FamiTags.paintBorrow) window.FamiTags.paintBorrow();
@@ -177,6 +177,7 @@
     fill.style.width = "0%";
     bar.appendChild(fill);
     btn.appendChild(bar);
+    bar.hidden = true;
     const cap = document.createElement("span");
     cap.className = "tile-label";
     cap.textContent = item.title || "";
