@@ -91,8 +91,115 @@
       idRow.hidden = !isGm;
       idRow.classList.toggle("is-host", hostOn());
     }
-    const sw = document.querySelector("#mode-bar .select-sw");
-    if (sw) sw.hidden = !hostOn();
+    if (hostOn()) armFoilSense();
+    else stopFoilSense();
+  }
+
+  let foilLive = false;
+  let foilArmed = false;
+  let foilRaf = 0;
+  const foilOri = { beta: 45, gamma: 0, alpha: 0 };
+  const foilMot = { x: 0, y: 0, z: 0 };
+
+  function foilCover() {
+    return document.querySelector("#cab-hud .cab-cover");
+  }
+
+  function paintFoil() {
+    foilRaf = 0;
+    const cover = foilCover();
+    if (!cover || !cover.classList.contains("is-holo")) return;
+    const g = Math.max(-50, Math.min(50, foilOri.gamma));
+    const b = Math.max(-50, Math.min(50, foilOri.beta - 45));
+    const x = 50 + g * 1.15 + foilMot.x * 10;
+    const y = 50 + b * 0.95 + foilMot.y * 10;
+    cover.style.setProperty("--foil-x", x.toFixed(1) + "%");
+    cover.style.setProperty("--foil-y", y.toFixed(1) + "%");
+    cover.style.setProperty("--foil-hx", (50 + g * 1.4).toFixed(1) + "%");
+    cover.style.setProperty("--foil-hy", (32 + b * 1.1).toFixed(1) + "%");
+    cover.style.setProperty("--foil-rx", (-b * 0.28).toFixed(2) + "deg");
+    cover.style.setProperty("--foil-ry", (g * 0.34).toFixed(2) + "deg");
+    cover.style.setProperty("--foil-a", (foilOri.alpha || 0).toFixed(1) + "deg");
+  }
+
+  function queueFoil() {
+    if (!foilRaf) foilRaf = window.requestAnimationFrame(paintFoil);
+  }
+
+  function onFoilOri(ev) {
+    if (ev.beta == null && ev.gamma == null) return;
+    foilOri.beta = ev.beta || 0;
+    foilOri.gamma = ev.gamma || 0;
+    foilOri.alpha = ev.alpha || 0;
+    queueFoil();
+  }
+
+  function onFoilMot(ev) {
+    const acc = ev.acceleration || ev.accelerationIncludingGravity;
+    if (!acc) return;
+    foilMot.x = acc.x || 0;
+    foilMot.y = acc.y || 0;
+    foilMot.z = acc.z || 0;
+    queueFoil();
+  }
+
+  function startFoilSense() {
+    if (foilLive || !hostOn()) return;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    foilLive = true;
+    window.addEventListener("deviceorientation", onFoilOri, true);
+    window.addEventListener("devicemotion", onFoilMot, true);
+    queueFoil();
+  }
+
+  function stopFoilSense() {
+    foilLive = false;
+    window.removeEventListener("deviceorientation", onFoilOri, true);
+    window.removeEventListener("devicemotion", onFoilMot, true);
+    if (foilRaf) {
+      window.cancelAnimationFrame(foilRaf);
+      foilRaf = 0;
+    }
+    const cover = foilCover();
+    if (cover) {
+      cover.style.removeProperty("--foil-x");
+      cover.style.removeProperty("--foil-y");
+      cover.style.removeProperty("--foil-hx");
+      cover.style.removeProperty("--foil-hy");
+      cover.style.removeProperty("--foil-rx");
+      cover.style.removeProperty("--foil-ry");
+      cover.style.removeProperty("--foil-a");
+    }
+  }
+
+  function armFoilSense() {
+    if (foilLive) return;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    function ask() {
+      const ori = window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission;
+      const mot = window.DeviceMotionEvent && DeviceMotionEvent.requestPermission;
+      const go = function () { startFoilSense(); };
+      if (typeof ori === "function") {
+        ori.call(DeviceOrientationEvent).then(function (state) {
+          if (state === "granted") go();
+        }).catch(function () {});
+      } else {
+        go();
+      }
+      if (typeof mot === "function") {
+        mot.call(DeviceMotionEvent).catch(function () {});
+      }
+    }
+    if (foilArmed) {
+      ask();
+      return;
+    }
+    foilArmed = true;
+    document.addEventListener("pointerdown", function once() {
+      document.removeEventListener("pointerdown", once, true);
+      ask();
+    }, true);
+    ask();
   }
 
   function layoutStage() {
@@ -295,6 +402,7 @@
       try { localStorage.setItem("famibook.hostView", hostView ? "1" : "0"); } catch (e) {}
       if (!hostOn() && window.FamiHost && window.FamiHost.clearSelect) window.FamiHost.clearSelect();
       paintHostChrome();
+      if (hostOn()) armFoilSense();
       paintBack();
       loadShelf(true);
     });

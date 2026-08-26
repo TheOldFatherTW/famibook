@@ -213,7 +213,7 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
   gap: 8px;
   margin: 0 auto 8px;
 }
-.cab-wrap { width: min(148px, 42vw); position: relative; overflow: visible; }
+.cab-wrap { width: min(148px, 42vw); position: relative; overflow: visible; perspective: 720px; }
 .cab-cover {
   position: relative;
   width: 100%;
@@ -281,13 +281,13 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
   opacity: 0;
   background-image:
     repeating-linear-gradient(
-      118deg,
+      calc(118deg + var(--foil-a, 0deg)),
       rgba(255, 255, 255, 0) 0 7%,
       rgba(255, 255, 255, 0.55) 10%,
       rgba(255, 255, 255, 0) 13%
     ),
     repeating-linear-gradient(
-      -22deg,
+      calc(-22deg + var(--foil-a, 0deg)),
       #feda75 0%,
       #fa7e1e 16%,
       #d62976 32%,
@@ -296,21 +296,31 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
       #feda75 80%
     );
   background-size: 240% 240%, 320% 320%;
+  background-position: var(--foil-x, 50%) var(--foil-y, 50%), var(--foil-x, 40%) var(--foil-y, 60%);
   mix-blend-mode: color-dodge;
+  transform: rotateX(var(--foil-rx, 0deg)) rotateY(var(--foil-ry, 0deg));
+  transform-style: preserve-3d;
+  will-change: transform, background-position;
+}
+.cab-foil::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    120% 90% at var(--foil-hx, 50%) var(--foil-hy, 32%),
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 0) 46%
+  );
+  mix-blend-mode: screen;
 }
 .cab-cover.is-holo .cab-foil {
-  opacity: 0.92;
-  animation: cab-foil 5.6s linear infinite;
-}
-@keyframes cab-foil {
-  to {
-    background-position: 130% 70%, 70% 130%;
-  }
+  opacity: 0.46;
 }
 @media (prefers-reduced-motion: reduce) {
   .cab-cover.is-holo .cab-foil {
-    animation: none;
-    opacity: 0.55;
+    transform: none;
+    opacity: 0.28;
   }
 }
 .cab-mask {
@@ -516,8 +526,7 @@ html.has-rail .tag-board {
 html.has-rail .feed {
   padding-right: 0;
 }
-html.is-select .tile,
-html.is-drag .tile {
+html.is-select .tile {
   touch-action: none;
 }
 .mode-bar {
@@ -551,13 +560,6 @@ html.is-drag .tile {
   color: #fff;
   box-shadow: none;
   background: linear-gradient(120deg, #fa7e1e 0%, #d62976 48%, #962fbf 100%);
-}
-.mode-bar .select-sw {
-  width: auto;
-  margin: 0 0 0 auto;
-  min-height: 36px;
-  gap: 8px;
-  font-size: 13px;
 }
 .photo-rail {
   position: fixed;
@@ -613,9 +615,6 @@ html.is-drag .tile {
   box-shadow: none;
   border: 2px dashed #c8c8c8;
 }
-html.is-drag .tile.tile-add {
-  pointer-events: none;
-}
 .tile .tile-plus {
   position: absolute;
   inset: 0;
@@ -635,15 +634,15 @@ html.is-drag .tile.tile-add {
   top: 6px;
   right: 6px;
   z-index: 3;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   color: #d62976;
   filter: drop-shadow(0 1px 2px rgba(255, 255, 255, 0.9));
   pointer-events: none;
 }
 .tile-heart svg {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   display: block;
   fill: #d62976;
 }
@@ -655,14 +654,6 @@ html.is-drag .tile.tile-add {
 }
 .tile.is-pinned .tile-shield {
   box-shadow: inset 0 0 0 3px var(--rose);
-}
-.tile-drag {
-  position: fixed;
-  z-index: 100050;
-  pointer-events: none;
-  opacity: 0.92;
-  transform: scale(1.04);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
 }
 .tile img {
   width: 100%;
@@ -778,22 +769,36 @@ html.is-drag .tile.tile-add {
 }
 @media (min-width: 600px) and (pointer: coarse) {
   html.has-rail .tag-board {
-    padding-right: calc(80px + env(safe-area-inset-right, 0px));
+    padding-right: calc(88px + env(safe-area-inset-right, 0px));
   }
   .photo-rail {
     gap: 18px;
   }
   .photo-rail .ins-icon {
-    width: 56px;
-    height: 56px;
-    flex-basis: 56px;
+    width: 64px;
+    height: 64px;
+    flex-basis: 64px;
   }
   .photo-rail .ins-face {
     inset: 4px;
   }
   .photo-rail .ins-icon svg {
-    width: 22px;
-    height: 22px;
+    width: 25px;
+    height: 25px;
+  }
+  .album-settings .settings-toggle {
+    width: 46px;
+    height: 46px;
+    flex-basis: 46px;
+  }
+  .album-settings .settings-toggle svg {
+    width: 21px;
+    height: 21px;
+  }
+  .tile-heart,
+  .tile-heart svg {
+    width: 32px;
+    height: 32px;
   }
 }
 .batch-tag-mask {

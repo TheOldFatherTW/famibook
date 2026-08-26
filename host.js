@@ -36,11 +36,7 @@
   let jobTimer = 0;
   let maskDown = null;
   let orgSnap = { folders: [], favorites: [] };
-  let dragged = false;
-  let drag = null;
-  let selectArmed = false;
   let noteTimer = 0;
-  let lastPtr = { x: 0, y: 0, id: 0 };
   let jobsBusy = false;
 
   function api(path, opts) {
@@ -206,31 +202,6 @@
     }, 1600);
   }
 
-  function ensureSelectSwitch() {
-    const bar = document.getElementById("mode-bar");
-    if (!bar || bar.querySelector(".select-sw")) return;
-    const label = document.createElement("label");
-    label.className = "ask-skip select-sw";
-    const name = document.createElement("span");
-    name.textContent = "多選";
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.setAttribute("role", "switch");
-    input.id = "select-sw";
-    const sw = document.createElement("span");
-    sw.className = "ask-sw";
-    label.appendChild(name);
-    label.appendChild(input);
-    label.appendChild(sw);
-    input.addEventListener("change", function () {
-      selectArmed = !!input.checked;
-      selectMode = selectArmed;
-      if (!selectArmed) selected = new Set();
-      paintPicks();
-    });
-    bar.appendChild(label);
-  }
-
   function ensureRail() {
     const rail = document.getElementById("photo-rail");
     if (!rail || rail.dataset.ready) return rail;
@@ -391,7 +362,6 @@
   }
 
   function enterSelect(id) {
-    if (!selectArmed) return;
     selectMode = true;
     if (id) selected.add(id);
     paintPicks();
@@ -400,13 +370,13 @@
   function togglePick(id) {
     if (selected.has(id)) selected.delete(id);
     else selected.add(id);
-    selectMode = selectArmed || selected.size > 0;
+    selectMode = selected.size > 0;
     paintPicks();
   }
 
   function clearSelect() {
     selected = new Set();
-    if (!selectArmed) selectMode = false;
+    selectMode = false;
     paintPicks();
   }
 
@@ -881,8 +851,12 @@
     }
   }
 
+  function tilesExceptPlus() {
+    return Array.prototype.slice.call(document.querySelectorAll("#feed .tile:not(.tile-add)"));
+  }
+
   function syncJobTiles(snap) {
-    if (drag || jobsBusy) return;
+    if (jobsBusy) return;
     const rows = (snap && snap.active) || [];
     const tiles = tilesExceptPlus();
     if (tiles.length !== rows.length) {
@@ -989,214 +963,38 @@
       if (ev.target && ev.target.closest && ev.target.closest(".job-ctrl")) return;
       sx = ev.clientX;
       sy = ev.clientY;
-      lastPtr = { x: ev.clientX, y: ev.clientY, id: ev.pointerId };
       fromHold = false;
-      dragged = false;
       clearPress();
       press = window.setTimeout(function () {
         press = 0;
         fromHold = true;
-        if (item.pinned || item.kind === "plus") return;
-        beginDrag({
-          clientX: lastPtr.x,
-          clientY: lastPtr.y,
-          pointerId: lastPtr.id,
-          cancelable: false,
-        }, btn, item);
+        enterSelect(item.id);
       }, 400);
     });
     btn.addEventListener("pointermove", function (ev) {
-      lastPtr = { x: ev.clientX, y: ev.clientY, id: ev.pointerId };
-      if (press && (Math.abs(ev.clientX - sx) > 14 || Math.abs(ev.clientY - sy) > 14)) {
-        clearPress();
-      }
+      if (!press) return;
+      if (Math.abs(ev.clientX - sx) > 14 || Math.abs(ev.clientY - sy) > 14) clearPress();
     });
-    btn.addEventListener("pointerup", function () {
-      clearPress();
-    });
-    btn.addEventListener("pointercancel", function () {
-      clearPress();
-      endDrag(false);
-    });
+    btn.addEventListener("pointerup", clearPress);
+    btn.addEventListener("pointercancel", clearPress);
     btn.addEventListener("click", function (ev) {
-      if (dragged || fromHold || selectMode) {
+      if (fromHold) {
         ev.preventDefault();
         ev.stopImmediatePropagation();
-        if (selectMode && !fromHold && !dragged) togglePick(item.id);
         fromHold = false;
-        dragged = false;
-      }
-    }, true);
-  }
-
-  function tilesExceptPlus() {
-    return Array.prototype.slice.call(document.querySelectorAll("#feed .tile:not(.tile-add)"));
-  }
-
-  function beginDrag(ev, btn, item) {
-    const list = tilesExceptPlus();
-    const from = list.indexOf(btn);
-    if (from < 0) return;
-    drag = {
-      item: item,
-      btn: btn,
-      from: from,
-      hole: from,
-      list: list,
-      pointer: ev.pointerId,
-      ghost: null,
-    };
-    dragged = true;
-    document.documentElement.classList.add("is-drag");
-    try { btn.setPointerCapture(ev.pointerId); } catch (e) {}
-    btn.classList.add("is-ghost");
-    list.forEach(function (el) {
-      el.style.transition = "transform 0.16s ease";
-    });
-    const plus = document.querySelector("#feed .tile-add");
-    if (plus) plus.style.pointerEvents = "none";
-    const ghost = btn.cloneNode(true);
-    ghost.classList.add("tile-drag");
-    ghost.classList.remove("is-ghost", "is-pick");
-    const box = btn.getBoundingClientRect();
-    ghost.style.width = box.width + "px";
-    ghost.style.height = box.height + "px";
-    ghost.style.left = box.left + "px";
-    ghost.style.top = box.top + "px";
-    document.body.appendChild(ghost);
-    drag.ghost = ghost;
-    drag.offX = ev.clientX - box.left;
-    drag.offY = ev.clientY - box.top;
-    drag.cellW = box.width;
-    drag.cellH = box.height;
-    window.addEventListener("pointermove", onDragMove);
-    window.addEventListener("pointerup", onDragUp);
-    window.addEventListener("pointercancel", onDragCancel);
-    if (ev.cancelable) ev.preventDefault();
-  }
-
-  function holeFromPoint(x, y) {
-    if (!drag) return 0;
-    const feed = document.getElementById("feed");
-    if (!feed) return drag.from;
-    const box = feed.getBoundingClientRect();
-    const cols = 3;
-    const gap = 2;
-    const cellW = drag.cellW + gap;
-    const cellH = drag.cellH + gap;
-    if (cellW <= 0 || cellH <= 0) return drag.from;
-    let col = Math.floor((x - box.left) / cellW);
-    let row = Math.floor((y - box.top) / cellH);
-    col = Math.max(0, Math.min(cols - 1, col));
-    const n = drag.list.length;
-    if (n <= 0) return 0;
-    const maxRow = Math.floor((n - 1) / cols);
-    if (row < 0) row = 0;
-    let idx;
-    if (row > maxRow || row * cols + col >= n) {
-      idx = n - 1;
-    } else {
-      idx = row * cols + col;
-    }
-    if (drag.hole != null && idx !== drag.hole) {
-      const stayCol = drag.hole % cols;
-      const stayRow = Math.floor(drag.hole / cols);
-      const cx = box.left + (stayCol + 0.5) * cellW;
-      const cy = box.top + (stayRow + 0.5) * cellH;
-      if (Math.hypot(x - cx, y - cy) < Math.min(cellW, cellH) * 0.22) idx = drag.hole;
-    }
-    if (isJobs()) {
-      const pinned = drag.list.findIndex(function (el) { return el.classList.contains("is-pinned"); });
-      if (pinned === 0) idx = Math.max(1, idx);
-    }
-    return idx;
-  }
-
-  function onDragMove(ev) {
-    if (!drag) return;
-    if (ev.cancelable) ev.preventDefault();
-    lastPtr = { x: ev.clientX, y: ev.clientY, id: ev.pointerId };
-    if (drag.ghost) {
-      drag.ghost.style.left = (ev.clientX - drag.offX) + "px";
-      drag.ghost.style.top = (ev.clientY - drag.offY) + "px";
-    }
-    const hole = holeFromPoint(ev.clientX, ev.clientY);
-    if (hole === drag.hole) return;
-    drag.hole = hole;
-    shiftHole(hole);
-  }
-
-  function shiftHole(hole) {
-    if (!drag) return;
-    const from = drag.from;
-    const cols = 3;
-    drag.list.forEach(function (el, i) {
-      if (el.classList.contains("is-pinned") && i === 0 && isJobs()) {
-        el.style.transform = "";
         return;
       }
-      let visual = i;
-      if (from < hole) {
-        if (i > from && i <= hole) visual = i - 1;
-      } else if (from > hole) {
-        if (i >= hole && i < from) visual = i + 1;
+      if (selectMode) {
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        togglePick(item.id);
       }
-      const dx = (visual % cols) - (i % cols);
-      const dy = Math.floor(visual / cols) - Math.floor(i / cols);
-      const gap = 2;
-      el.style.transform = "translate(" + (dx * (drag.cellW + gap)) + "px," + (dy * (drag.cellH + gap)) + "px)";
-    });
-  }
-
-  function clearShift() {
-    tilesExceptPlus().forEach(function (el) {
-      el.style.transform = "";
-      el.style.transition = "";
-      el.classList.remove("is-ghost", "is-drop");
-    });
-  }
-
-  function onDragUp() {
-    endDrag(true);
-  }
-
-  function onDragCancel() {
-    endDrag(false);
-  }
-
-  function endDrag(commit) {
-    window.removeEventListener("pointermove", onDragMove);
-    window.removeEventListener("pointerup", onDragUp);
-    window.removeEventListener("pointercancel", onDragCancel);
-    if (!drag) return;
-    const state = drag;
-    drag = null;
-    document.documentElement.classList.remove("is-drag");
-    const plus = document.querySelector("#feed .tile-add");
-    if (plus) plus.style.pointerEvents = "";
-    if (state.ghost && state.ghost.parentNode) state.ghost.parentNode.removeChild(state.ghost);
-    clearShift();
-    if (!commit) return;
-    if (state.hole === state.from) return;
-    const ids = state.list.map(function (el) { return el.dataset.id; });
-    const moving = ids.splice(state.from, 1)[0];
-    ids.splice(state.hole, 0, moving);
-    if (isJobs()) {
-      const jobIds = ids
-        .map(function (id) { return String(id || "").replace(/^job:/, ""); })
-        .filter(Boolean);
-      post("/api/host/jobs", { op: "reorder", ids: jobIds }).then(function () { loadJobs(true); });
-      return;
-    }
-    post("/api/host/org", { op: "reorder", key: cwd() || tab() || "all", ids: ids }).then(function () {
-      reload();
-    });
+    }, true);
   }
 
   function attach(token) {
     key = token;
     ensureRail();
-    ensureSelectSwitch();
     if (attached) {
       syncGear();
       return;
