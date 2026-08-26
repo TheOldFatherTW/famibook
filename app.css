@@ -328,14 +328,14 @@ html.settings-open #feed {
   pointer-events: none;
 }
 .album-settings .settings-toggle {
-  width: 34px;
-  height: 34px;
-  flex-basis: 34px;
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.22));
 }
 .album-settings .settings-toggle svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 .settings-menu {
   position: fixed;
@@ -524,9 +524,9 @@ button.settings-entry:active {
     bottom: 6px;
   }
   .album-settings .settings-toggle {
-    width: 32px;
-    height: 32px;
-    flex-basis: 32px;
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
   }
 }
 .batch-tag-mask {

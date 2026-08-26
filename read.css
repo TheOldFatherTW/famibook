@@ -48,35 +48,64 @@ body.famiWeb #navImageContainer {
   width: 100vw;
   height: 100dvh;
   background: var(--void);
+  position: relative;
+  overflow: hidden;
+}
+body.famiWeb #navStage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: grid;
+  place-content: center;
+}
+body.famiWeb #navStage > .nav-spread,
+body.famiWeb #navImage,
+body.famiWeb #navIncoming {
+  grid-area: 1 / 1;
+  justify-self: center;
+  align-self: center;
+  will-change: transform;
+}
+body.famiWeb #navIncoming {
+  display: grid;
+  grid-auto-flow: column;
+  align-items: stretch;
+  height: 100%;
+  width: min-content;
+  max-height: 100dvh;
+  position: relative;
+  overflow: hidden;
+  pointer-events: none;
+  background-image: none !important;
+}
+body.famiWeb #navIncoming > img {
+  display: block;
+  background: #fff;
+  object-fit: contain;
+  object-position: center center;
+}
+body.famiWeb #navIncoming.singlePage > img:last-of-type {
+  display: none;
+}
+body.famiWeb #navIncoming .crop-left {
+  object-fit: cover;
+  object-position: left center;
+}
+body.famiWeb #navIncoming .crop-right {
+  object-fit: cover;
+  object-position: right center;
 }
 body.famiWeb #navImage {
   background-image: none !important;
   max-height: 100dvh;
 }
-body.famiWeb #navImage.bookShadow {
+body.famiWeb #navImage.bookShadow,
+body.famiWeb #navIncoming.bookShadow {
   filter: none;
   box-shadow: none;
 }
-body.famiWeb #navImage.is-page-in {
-  animation: fami-page-in 0.34s cubic-bezier(0.22, 1, 0.36, 1);
-}
-body.famiWeb #navImage.is-page-in-next {
-  animation-name: fami-page-in-next;
-}
-body.famiWeb #navImage.is-page-in-prev {
-  animation-name: fami-page-in-prev;
-}
-@keyframes fami-page-in-next {
-  from { transform: translateX(-28px); opacity: 0; }
-  to { transform: none; opacity: 1; }
-}
-@keyframes fami-page-in-prev {
-  from { transform: translateX(28px); opacity: 0; }
-  to { transform: none; opacity: 1; }
-}
-@keyframes fami-page-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+body.famiWeb .pageHit {
+  z-index: 6;
 }
 body.famiWeb .navMenu {
   background: transparent;
@@ -142,19 +171,22 @@ body.famiWeb #backShelf {
   padding: 0 12px 0 0;
 }
 body.famiWeb #configButton {
+  -webkit-mask: none !important;
+  mask: none !important;
   -webkit-mask-image: none !important;
+  mask-image: none !important;
   background: transparent !important;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
+  width: 40px !important;
+  height: 40px !important;
+  flex: 0 0 40px !important;
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.18));
 }
 body.famiWeb #configButton .ins-face {
   inset: 3px;
 }
 body.famiWeb #configButton svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   color: #1c1c1e;
 }
 body.famiWeb #bottomMenu {
@@ -196,7 +228,7 @@ body.famiWeb #configMask {
   background: transparent;
 }
 body.famiWeb #configMenu.batch-tag-sheet {
-  position: relative;
+  position: relative !important;
   top: auto;
   right: auto;
   left: auto;
@@ -209,7 +241,7 @@ body.famiWeb #configMenu.batch-tag-sheet {
   overflow: visible;
   background: var(--card);
   border-radius: 22px;
-  padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 16px 44px rgba(0, 0, 0, 0.18);
   color: var(--ink);
 }
@@ -226,11 +258,39 @@ body.famiWeb #configMenu * {
   font-weight: 400;
 }
 body.famiWeb #configMenu .batch-tag-head {
-  margin: 0 0 8px;
+  position: static;
+  margin: 0 0 10px;
+  padding: 0 44px 0 0;
+  min-height: 34px;
+  justify-content: flex-start;
+  align-items: center;
 }
+body.famiWeb #configMenu .batch-tag-head p {
+  width: auto;
+  margin: 0;
+}
+body.famiWeb #configMenu #closeMenu,
 body.famiWeb #configMenu .batch-tag-close {
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  left: auto !important;
+  bottom: auto !important;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
   background: #e5e5ea;
   color: #1c1c1e;
+  font-size: 22px;
+  line-height: 1;
+  z-index: 3;
+}
+body.famiWeb #configMenu #closeMenu::after,
+body.famiWeb #configMenu #closeMenu .icon {
+  display: none !important;
 }
 body.famiWeb #configMenu .ask-skip {
   color: var(--ink);
@@ -310,10 +370,9 @@ body.famiWeb #pageWait .thinking-five span {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  body.famiWeb #navImage.is-page-in,
-  body.famiWeb #navImage.is-page-in-next,
-  body.famiWeb #navImage.is-page-in-prev {
-    animation: none;
+  body.famiWeb #navImage,
+  body.famiWeb #navIncoming {
+    transition: none !important;
   }
 }
 input, textarea, select {

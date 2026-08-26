@@ -94,6 +94,17 @@
     if (badge) badge.classList.toggle("is-run", !!on);
   }
 
+  function scrubLegacySettings() {
+    const staleBtn = document.getElementById("gear-btn");
+    if (staleBtn) staleBtn.remove();
+    document.querySelectorAll(".gear-menu, #gear-menu").forEach(function (n) {
+      n.remove();
+    });
+    Array.prototype.slice.call(document.querySelectorAll("button")).forEach(function (b) {
+      if ((b.textContent || "").indexOf("清掉我的紀錄") >= 0) b.remove();
+    });
+  }
+
   function closeSettings() {
     const wrap = settingsWrap || document.getElementById("album-settings");
     if (!wrap) return;
@@ -167,13 +178,19 @@
   }
 
   function ensureSettings() {
-    if (settingsWrap && settingsWrap.isConnected) return settingsWrap;
-    settingsWrap = null;
-    const wrap = document.createElement("div");
-    settingsWrap = wrap;
+    scrubLegacySettings();
+    const host = document.querySelector("#cab-hud .cab-wrap");
+    const existing = document.getElementById("album-settings");
+    if (settingsWrap && settingsWrap.isConnected) {
+      if (host && settingsWrap.parentNode !== host) host.appendChild(settingsWrap);
+      return settingsWrap;
+    }
+    settingsWrap = existing && existing.isConnected ? existing : document.createElement("div");
+    const wrap = settingsWrap;
     wrap.id = "album-settings";
     wrap.className = "album-settings";
     wrap.hidden = true;
+    wrap.innerHTML = "";
     const toggle = insButton("settings-toggle", GEAR, "設定");
     toggle.setAttribute("aria-expanded", "false");
     const menu = document.createElement("div");
@@ -209,7 +226,6 @@
     });
     wrap.appendChild(toggle);
     wrap.appendChild(menu);
-    const host = document.querySelector("#cab-hud .cab-wrap");
     if (host) host.appendChild(wrap);
     else document.body.appendChild(wrap);
     document.addEventListener("keydown", function (ev) {
@@ -659,6 +675,8 @@
     mode = "list";
     loadShelf(true);
   });
+
+  scrubLegacySettings();
 
   window.FamiShelf = {
     reload: () => loadShelf(true),
