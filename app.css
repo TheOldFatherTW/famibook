@@ -633,18 +633,20 @@ html.is-select .tile {
   position: absolute;
   top: 6px;
   right: 6px;
-  z-index: 3;
-  width: 22px;
-  height: 22px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 6px;
+  background: #000;
   color: #d62976;
-  filter: drop-shadow(0 1px 2px rgba(255, 255, 255, 0.9));
   pointer-events: none;
 }
 .tile-heart svg {
   width: 22px;
   height: 22px;
   display: block;
-  fill: #d62976;
+  fill: currentColor;
 }
 .tile.is-ghost {
   opacity: 0.22;
@@ -795,7 +797,6 @@ html.is-select .tile {
     width: 21px;
     height: 21px;
   }
-  .tile-heart,
   .tile-heart svg {
     width: 32px;
     height: 32px;
