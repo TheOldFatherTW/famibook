@@ -95,6 +95,11 @@ body.famiWeb #navIncoming .crop-right {
   object-fit: cover;
   object-position: right center;
 }
+body.famiWeb #navImage,
+body.famiWeb #navIncoming {
+  isolation: isolate;
+  overflow: hidden;
+}
 body.famiWeb #navImage {
   background-image: none !important;
   max-height: 100dvh;
@@ -180,6 +185,18 @@ body.famiWeb #configButton {
   height: 40px !important;
   flex: 0 0 40px !important;
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.18));
+}
+body.famiWeb #reader-settings.album-settings {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  z-index: 8;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+}
+body.famiWeb #reader-settings .settings-menu {
+  color: #1c1c1e;
 }
 body.famiWeb #configButton .ins-face {
   inset: 3px;
