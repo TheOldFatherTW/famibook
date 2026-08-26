@@ -16,8 +16,7 @@
   const faceImg = document.getElementById("face-img");
   const readerName = document.getElementById("reader-name");
   const coverInput = document.getElementById("cover-input");
-  const modeAll = document.getElementById("mode-all");
-  const modeList = document.getElementById("mode-list");
+  const shelfBack = document.getElementById("shelf-back");
   let settingsWrap = null;
   let settingsCatch = null;
   const GEAR =
@@ -28,8 +27,8 @@
   let key = "";
   let busy = false;
   let lastShelf = null;
-  let mode = "list";
   let cwd = "";
+  let parentCwd = "";
   let offset = 0;
   const LIMIT = 40;
   const FIRST = 12;
@@ -310,6 +309,17 @@
     return pct + "%";
   }
 
+  function epLabel(item) {
+    if (!item) return "";
+    const a = item.volume;
+    if (a == null || a === "") return "";
+    const b = item.volume_end;
+    if (item.kind === "folder" && b != null && b !== "" && Number(b) !== Number(a)) {
+      return String(a) + "-" + String(b);
+    }
+    return String(a);
+  }
+
   function openReader(item) {
     if (!item || item.kind === "folder") return;
     const token = key;
@@ -466,10 +476,11 @@
     const shield = document.createElement("span");
     shield.className = "tile-shield";
     btn.appendChild(shield);
-    if (item.kind !== "folder" && item.volume != null && item.volume !== "") {
+    const epText = epLabel(item);
+    if (epText) {
       const ep = document.createElement("span");
       ep.className = "tile-ep";
-      ep.textContent = String(item.volume);
+      ep.textContent = epText;
       btn.appendChild(ep);
     }
     const pct = document.createElement("span");
@@ -485,7 +496,6 @@
       ev.preventDefault();
       if (item.kind === "folder") {
         cwd = item.id;
-        mode = "list";
         loadShelf(true);
         return;
       }
@@ -494,9 +504,10 @@
     return btn;
   }
 
-  function updateModeButtons() {
-    if (modeAll) modeAll.classList.toggle("is-on", mode === "all");
-    if (modeList) modeList.classList.toggle("is-on", mode === "list");
+  function paintBack() {
+    const inFolder = !!cwd;
+    if (tagBoard) tagBoard.hidden = !inFolder;
+    if (shelfBack) shelfBack.hidden = !inFolder;
   }
 
   async function loadShelf(reset) {
@@ -507,20 +518,22 @@
       resetThumbs();
       feed.innerHTML = "";
       catalog = {};
-      updateModeButtons();
+      paintBack();
     }
     loadingMore = true;
-    const view = mode === "list" ? "list" : "all";
-    const folder = mode === "list" && cwd ? "&cwd=" + encodeURIComponent(cwd) : "";
+    const folder = cwd ? "&cwd=" + encodeURIComponent(cwd) : "";
     try {
       const x = await window.FamiGate.api(
-        "/api/shelf?view=" + view + "&offset=" + offset + "&limit=" + LIMIT + folder,
+        "/api/shelf?view=list&offset=" + offset + "&limit=" + LIMIT + folder,
         key,
         { timeout: 20000 }
       );
       if (!x.res.ok || !x.j) return;
       lastShelf = x.j;
       total = x.j.total || 0;
+      parentCwd = x.j.parent || "";
+      cwd = x.j.cwd || cwd;
+      paintBack();
       const start = offset;
       (x.j.items || []).forEach((it, i) => feed.appendChild(tileEl(it, start + i)));
       offset += (x.j.items || []).length;
@@ -578,11 +591,10 @@
       window.FamiGate.savePersonal(key);
       window.FamiGate.pinKey(key);
       renderMe(x.j.reader);
-      if (tagBoard) tagBoard.hidden = false;
       setBoot(false, "");
       if (statusEl) statusEl.textContent = "";
-      mode = "list";
       cwd = "";
+      parentCwd = "";
       await loadShelf(true);
       if (typeof navigator.standalone === "boolean" && !navigator.standalone) {
         const seen = localStorage.getItem("famibook.installed");
@@ -676,14 +688,9 @@
     }
   });
 
-  if (modeAll) modeAll.addEventListener("click", function () {
-    cwd = "";
-    mode = "all";
-    loadShelf(true);
-  });
-  if (modeList) modeList.addEventListener("click", function () {
-    cwd = "";
-    mode = "list";
+  if (shelfBack) shelfBack.addEventListener("click", function (ev) {
+    ev.preventDefault();
+    cwd = parentCwd || "";
     loadShelf(true);
   });
 

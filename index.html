@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./app.css?v=16"/>
+<link rel="stylesheet" href="./app.css?v=17"/>
 <script src="./config.js?v=1787662694"></script>
 <script>
 (function () {
@@ -107,10 +107,12 @@
     <p class="reader-name" id="reader-name"></p>
   </div>
   <div class="tag-board" id="tag-board" hidden>
-    <div class="mode-bar">
-      <button type="button" class="mode-btn" id="mode-all">All</button>
-      <button type="button" class="mode-btn is-on" id="mode-list">List</button>
-    </div>
+    <button type="button" class="ins-icon nav-back" id="shelf-back" hidden aria-label="返回書櫃">
+      <span class="ins-ring"></span>
+      <span class="ins-face">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5M8.5 12H20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+    </button>
   </div>
   <div class="feed" id="feed"></div>
 </div>
@@ -121,6 +123,6 @@
 </div>
 <script src="./lissajous.js?v=2"></script>
 <script src="./gate.js?v=2"></script>
-<script src="./door.js?v=13"></script>
+<script src="./door.js?v=14"></script>
 </body>
 </html>

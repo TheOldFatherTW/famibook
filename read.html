@@ -65,8 +65,8 @@ window.FAMI_WEB_READER = true;
   }
 })();
 </script>
-<link rel="stylesheet" href="./app.css?v=16"/>
-<link rel="stylesheet" href="./read.css?v=7"/>
+<link rel="stylesheet" href="./app.css?v=17"/>
+<link rel="stylesheet" href="./read.css?v=8"/>
 </head>
 <body class="manga lightTheme famiWeb">
 <div id="loaderContainer">
@@ -80,8 +80,13 @@ window.FAMI_WEB_READER = true;
 
 <div id="topMenu" class="navMenu hidden">
   <div class="navContainer">
+    <button type="button" id="backShelf" class="ins-icon nav-back" aria-label="返回書櫃">
+      <span class="ins-ring"></span>
+      <span class="ins-face">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5M8.5 12H20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+    </button>
     <div id="bookInfo">
-      <button type="button" id="backShelf">書櫃</button>
       <h2 id="bookTitle"></h2>
       <h3 id="bookVolume" hidden></h3>
     </div>
@@ -157,10 +162,10 @@ window.FAMI_WEB_READER = true;
     <button type="button" class="tag-apply" id="endNext" hidden>
       <span class="tag-apply-face">接下一集</span>
     </button>
-    <button type="button" class="ins-icon settings-toggle" id="endHome" aria-label="返回書櫃" title="返回書櫃">
+    <button type="button" class="ins-icon nav-back" id="endHome" aria-label="返回書櫃" title="返回書櫃">
       <span class="ins-ring"></span>
       <span class="ins-face">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 3.8l.6-1.3h3.6l.6 1.3 1.6.7 1.4-.5 2.5 2.5-.5 1.4.7 1.6 1.3.6v3.6l-1.3.6-.7 1.6.5 1.4-2.5 2.5-1.4-.5-1.6.7-.6 1.3h-3.6l-.6-1.3-1.6-.7-1.4.5-2.5-2.5.5-1.4-.7-1.6-1.3-.6v-3.6l1.3-.6.7-1.6-.5-1.4L6.6 4l1.4.5 1.6-.7z" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/><circle cx="12" cy="11.9" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5M8.5 12H20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </span>
     </button>
   </div>
