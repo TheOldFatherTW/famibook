@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./app.css?v=11"/>
+<link rel="stylesheet" href="./app.css?v=12"/>
 <script src="./config.js?v=1787662694"></script>
 <script>
 (function () {
@@ -101,7 +101,6 @@
         <div class="cab-face"><img id="face-img" alt="" hidden/></div>
         <div class="cab-mask" aria-hidden="true"></div>
       </div>
-      <button type="button" class="gear" id="gear-btn" aria-label="設定">⚙</button>
     </div>
     <p class="reader-name" id="reader-name"></p>
   </div>
@@ -109,31 +108,17 @@
     <div class="mode-bar">
       <button type="button" class="mode-btn" id="mode-all">All</button>
       <button type="button" class="mode-btn is-on" id="mode-list">List</button>
-      <button type="button" class="mode-btn mode-find" id="mode-find" aria-label="找標籤">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l5 5" stroke="currentColor" stroke-width="2" fill="none"/></svg>
-      </button>
     </div>
   </div>
   <div class="feed" id="feed"></div>
 </div>
-<div class="gear-menu" id="gear-menu" hidden>
-  <button type="button" id="act-cover">更換頭像</button>
-  <button type="button" id="act-clear">清掉我的紀錄</button>
-</div>
 <input id="cover-input" type="file" accept="image/*" hidden/>
-<div class="batch-tag-mask list-tag-mask" id="list-mask" hidden>
-  <div class="list-tag-sheet" id="list-sheet">
-    <div class="batch-tag-head"><p>找</p><button type="button" class="batch-tag-close" id="list-close">×</button></div>
-    <div class="list-tag-body" id="list-body"></div>
-  </div>
-</div>
 <div class="home-install" id="home-install" hidden>
   <p>請點底部分享，再選加入主畫面</p>
   <button type="button" class="invite-go" id="home-installed">我已加入</button>
 </div>
 <script src="./lissajous.js?v=2"></script>
 <script src="./gate.js?v=2"></script>
-<script src="./tags.js?v=8"></script>
-<script src="./door.js?v=7"></script>
+<script src="./door.js?v=8"></script>
 </body>
 </html>

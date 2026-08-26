@@ -191,7 +191,7 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
   gap: 8px;
   margin: 0 auto 8px;
 }
-.cab-wrap { width: min(148px, 42vw); position: relative; }
+.cab-wrap { width: min(148px, 42vw); position: relative; overflow: visible; }
 .cab-cover {
   position: relative;
   width: 100%;
@@ -247,18 +247,177 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
   z-index: 2;
   border-radius: 50%;
 }
-.gear {
-  position: absolute;
-  right: -4px;
-  bottom: -4px;
-  width: 36px;
-  height: 36px;
+.ins-icon {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  margin: 0;
+  border: 0;
   border-radius: 50%;
-  background: var(--card);
-  box-shadow: inset 0 0 0 1.5px var(--line);
-  z-index: 3;
-  color: var(--mute);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  flex: 0 0 40px;
+}
+.ins-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px #c8c8c8;
+}
+.ins-icon.is-live .ins-ring,
+.ins-icon.is-run .ins-ring {
+  box-shadow: none;
+  background: conic-gradient(
+    from 210deg,
+    #feda75 0deg,
+    #fa7e1e 70deg,
+    #d62976 140deg,
+    #962fbf 210deg,
+    #4f5bd5 280deg,
+    #feda75 360deg
+  );
+}
+.ins-icon.is-run .ins-ring {
+  animation: ins-spin 2.4s linear infinite;
+}
+.ins-icon.is-run,
+.settings-entry.is-run {
+  pointer-events: none;
+  cursor: default;
+}
+.ins-face {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+.ins-icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  color: #1c1c1e;
+}
+.album-settings {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  z-index: 8;
+  flex: 0 0 34px;
+}
+.album-settings[hidden],
+.settings-menu[hidden] {
+  display: none !important;
+}
+.settings-catch {
+  position: fixed;
+  inset: 0;
+  z-index: 100039;
+  background: transparent;
+}
+.settings-catch[hidden] {
+  display: none !important;
+}
+html.settings-open #feed {
+  pointer-events: none;
+}
+.album-settings .settings-toggle {
+  width: 34px;
+  height: 34px;
+  flex-basis: 34px;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.22));
+}
+.album-settings .settings-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+.settings-menu {
+  position: fixed;
+  z-index: 100040;
+  width: 220px;
+  padding: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.18);
+}
+button.settings-entry {
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  padding: 0 12px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: transparent;
+  color: #1c1c1e;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+}
+button.settings-entry:active {
+  background: #f2f2f7;
+}
+.settings-entry .ins-icon {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  pointer-events: none;
+}
+.settings-entry .ins-icon svg {
+  width: 14px;
+  height: 14px;
+}
+.ask-skip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 4px;
+  min-height: 44px;
   font-size: 16px;
+  font-weight: 600;
+  color: #1c1c1e;
+}
+.ask-skip input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.ask-sw {
+  width: 51px;
+  height: 31px;
+  border-radius: 999px;
+  background: rgba(120, 120, 128, 0.36);
+  position: relative;
+  flex: 0 0 auto;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.ask-sw::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
+  transition: transform 0.2s ease;
+}
+.ask-skip input:checked + .ask-sw {
+  background: #34c759;
+}
+.ask-skip input:checked + .ask-sw::after {
+  transform: translateX(20px);
 }
 .reader-name { margin: 8px 0 0; font-weight: 600; }
 .tag-board { width: min(720px, 100%); margin: 8px auto 0; text-align: left; }
@@ -277,7 +436,6 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
   min-height: 36px;
 }
 .mode-btn.is-on { background: var(--accent); box-shadow: none; color: #fff; }
-.mode-find svg { width: 14px; height: 14px; display: block; }
 .feed {
   width: min(720px, 100%);
   margin: 12px auto 0;
@@ -355,23 +513,22 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
 }
 .home-install[hidden], [hidden] { display: none !important; }
 .home-install p { margin: 0 0 8px; font-size: clamp(18px, 5.4vw, 22px); font-weight: 600; }
-.gear-menu {
-  position: fixed;
-  z-index: 80;
-  min-width: 200px;
-  background: var(--card);
-  border-radius: 14px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
-  padding: 8px;
+@media (max-width: 560px) {
+  .ins-icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+  .album-settings {
+    right: 8px;
+    bottom: 6px;
+  }
+  .album-settings .settings-toggle {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+  }
 }
-.gear-menu button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 12px 14px;
-  border-radius: 10px;
-}
-.gear-menu button:active { background: #2f2f2f; }
 .batch-tag-mask {
   position: fixed;
   inset: 0;
@@ -380,19 +537,6 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
   align-items: flex-end;
   background: transparent;
 }
-.list-tag-sheet {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  background: var(--card);
-  color: var(--ink);
-  min-height: var(--sheet-find-min);
-  max-height: var(--sheet-find-max);
-  overflow: hidden;
-  padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px));
-  border-radius: 22px 22px 0 0;
-}
-.list-tag-body { min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .borrow-dock {
   position: fixed;
   left: 0;
@@ -586,17 +730,6 @@ button.tag-apply::before {
 button.batch-tag-close {
   width: 34px; height: 34px; border-radius: 50%; background: #2f2f2f; font-size: 22px;
 }
-.tag-chip {
-  display: inline-flex;
-  margin: 0 8px 8px 0;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: #2f2f2f;
-  box-shadow: inset 0 0 0 1px var(--line);
-  font-size: 14px;
-}
-.tag-chip.is-on { background: var(--accent); box-shadow: none; }
-.tag-chip .x { margin-left: 8px; opacity: 0.7; }
 .book-actions button {
   display: block;
   width: 100%;
@@ -606,13 +739,7 @@ button.batch-tag-close {
 }
 @media (min-width: 600px) {
   .batch-tag-mask { align-items: center; padding: 24px 20px; }
-  .list-tag-sheet {
-    width: min(720px, 100%);
-    border-radius: 22px;
-    min-height: var(--sheet-find-min-wide);
-    max-height: var(--sheet-find-max-wide);
-  }
-  .batch-tag-sheet:not(.list-tag-sheet),
+  .batch-tag-sheet,
   .borrow-sheet {
     min-height: var(--sheet-action-min-wide);
   }
@@ -629,7 +756,12 @@ label { display: block; margin: 18px 0 8px; color: var(--mute); text-align: left
     grid-template-columns: repeat(5, 1fr);
   }
   .cab-hud, .tag-board { width: min(1100px, 100%); }
+  .album-settings {
+    right: 12px;
+    bottom: 10px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .thinking-five span, .blobs span, .cab-cover.is-run .cab-ring, button.tag-apply::before { animation: none; }
+  .thinking-five span, .blobs span, .cab-cover.is-run .cab-ring,
+  .ins-icon.is-run .ins-ring, button.tag-apply::before { animation: none; }
 }

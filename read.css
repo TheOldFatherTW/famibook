@@ -1,12 +1,13 @@
-/* FamiBook web reader skin over Okuma structure. Tokens match app.css. */
+/* FamiBook web reader: iOS chrome over Okuma structure. Tokens match system Settings, not Netflix. */
 html, body.famiWeb {
-  --bg: #141414;
-  --card: #181818;
-  --ink: #ffffff;
-  --mute: #b3b3b3;
-  --line: #404040;
-  --accent: #e50914;
-  --void: #000000;
+  --bg: #f2f2f7;
+  --card: #ffffff;
+  --ink: #1c1c1e;
+  --mute: #8e8e93;
+  --line: #d1d1d6;
+  --accent: #007aff;
+  --void: #f2f2f7;
+  --ios-green: #34c759;
   width: 100%;
   height: 100%;
   height: 100dvh;
@@ -30,7 +31,8 @@ body.famiWeb button,
 body.famiWeb input,
 body.famiWeb p,
 body.famiWeb h2,
-body.famiWeb h3 {
+body.famiWeb h3,
+body.famiWeb label {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
     "Microsoft JhengHei", sans-serif !important;
   font-weight: 400 !important;
@@ -38,7 +40,7 @@ body.famiWeb h3 {
 body.famiWeb.darkTheme,
 body.famiWeb.lightTheme {
   --background-gradient: none;
-  --menu-background-color: rgba(20, 20, 20, 0.94);
+  --menu-background-color: rgba(242, 242, 247, 0.92);
   --menu-text-color: var(--ink);
   background: var(--void) !important;
 }
@@ -55,12 +57,35 @@ body.famiWeb #navImage.bookShadow {
   filter: none;
   box-shadow: none;
 }
+body.famiWeb #navImage.is-page-in {
+  animation: fami-page-in 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+body.famiWeb #navImage.is-page-in-next {
+  animation-name: fami-page-in-next;
+}
+body.famiWeb #navImage.is-page-in-prev {
+  animation-name: fami-page-in-prev;
+}
+@keyframes fami-page-in-next {
+  from { transform: translateX(-28px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes fami-page-in-prev {
+  from { transform: translateX(28px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes fami-page-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 body.famiWeb .navMenu {
   background: transparent;
 }
 body.famiWeb .navMenu > .navContainer {
   width: 100%;
-  background: rgba(20, 20, 20, 0.94);
+  background: rgba(242, 242, 247, 0.92);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
   box-shadow: none;
   border-radius: 0;
 }
@@ -73,11 +98,12 @@ body.famiWeb #topMenu {
 body.famiWeb #topMenu .navContainer {
   height: auto;
   min-height: 48px;
-  padding: 8px 12px;
+  padding: 8px max(22px, calc(env(safe-area-inset-right, 0px) + 16px)) 8px max(16px, calc(env(safe-area-inset-left, 0px) + 12px));
   display: grid;
   grid-template-columns: 1fr auto;
   place-content: center;
   place-items: center;
+  gap: 10px;
 }
 body.famiWeb #topMenu .navContainer > div,
 body.famiWeb #topMenu .navContainer > button {
@@ -94,10 +120,11 @@ body.famiWeb #bookInfo > #bookTitle {
   text-shadow: none;
   margin: 0;
   letter-spacing: 0;
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: calc(100vw - 96px);
+  max-width: calc(100vw - 120px);
 }
 body.famiWeb #bookInfo > #bookVolume {
   font-size: 11px;
@@ -109,31 +136,32 @@ body.famiWeb #bookInfo > #bookVolume[hidden] {
   display: none !important;
 }
 body.famiWeb #backShelf {
-  color: var(--ink);
+  color: var(--accent);
   font-size: 16px;
   font-weight: 600;
   padding: 0 12px 0 0;
 }
 body.famiWeb #configButton {
   -webkit-mask-image: none !important;
-  background: var(--card) !important;
-  background-color: var(--card) !important;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1.5px var(--line);
-  color: var(--mute);
-  font-size: 16px;
-  line-height: 36px;
-  text-align: center;
-  display: grid;
-  place-items: center;
+  background: transparent !important;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.18));
+}
+body.famiWeb #configButton .ins-face {
+  inset: 3px;
+}
+body.famiWeb #configButton svg {
+  width: 16px;
+  height: 16px;
+  color: #1c1c1e;
 }
 body.famiWeb #bottomMenu {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 body.famiWeb #bottomMenu .navContainer {
-  padding: 10px 16px 12px;
+  padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 0px));
 }
 body.famiWeb #sliderContainer {
   width: 100%;
@@ -163,87 +191,130 @@ body.famiWeb .slider::-moz-range-thumb {
   background: var(--accent);
   filter: none;
 }
-body.famiWeb #configMenu {
-  top: calc(12px + env(safe-area-inset-top, 0px));
-  right: 12px;
+body.famiWeb #configMask {
+  z-index: 40;
+  background: transparent;
+}
+body.famiWeb #configMenu.batch-tag-sheet {
+  position: relative;
+  top: auto;
+  right: auto;
   left: auto;
   bottom: auto;
-  width: min(280px, calc(100vw - 24px));
-  max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-  overflow: auto;
+  transform: none;
+  width: min(360px, 100%);
+  max-height: none;
+  min-height: 0;
+  height: auto;
+  overflow: visible;
   background: var(--card);
-  border-radius: 14px;
-  padding: 8px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
-  transform: translateX(calc(100% + 24px));
+  border-radius: 22px;
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.18);
+  color: var(--ink);
 }
-body.famiWeb #configMenu.enabled {
-  transform: translateX(0);
+body.famiWeb #configMenu.batch-tag-sheet > div {
+  height: auto;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  place-content: unset;
+  place-items: unset;
 }
 body.famiWeb #configMenu * {
   font-size: 16px;
   font-weight: 400;
 }
-body.famiWeb #configMenu > div {
-  height: auto;
+body.famiWeb #configMenu .batch-tag-head {
+  margin: 0 0 8px;
+}
+body.famiWeb #configMenu .batch-tag-close {
+  background: #e5e5ea;
+  color: #1c1c1e;
+}
+body.famiWeb #configMenu .ask-skip {
+  color: var(--ink);
   margin: 0;
-  padding: 12px 14px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  padding: 4px 0;
 }
-body.famiWeb #configMenu > .button > .icon {
-  display: none;
+body.famiWeb #configMenu .ask-skip input:checked + .ask-sw {
+  background: var(--ios-green);
 }
-body.famiWeb #configMenu > .button.enabled::after {
-  content: "開";
-  color: var(--accent);
-  font-size: 15px;
-  font-weight: 600;
-}
-body.famiWeb #closeMenu {
-  justify-content: flex-end;
-  padding: 4px 6px 8px;
-}
-body.famiWeb #closeMenu .icon {
-  display: none;
-}
-body.famiWeb #closeMenu::after {
-  content: "×";
-  color: var(--mute);
-  font-size: 22px;
-  line-height: 1;
-}
-body.famiWeb #pageWidthContainer {
-  display: grid;
-  grid-auto-flow: row;
-  justify-items: stretch;
-  gap: 8px;
-}
-body.famiWeb #pageWidthContainer > p {
-  color: var(--mute);
-  font-size: 15px;
-}
+body.famiWeb #pageWidthContainer,
 body.famiWeb #doublePageButton,
+body.famiWeb #splitSpreadsButton,
 body.famiWeb #sidePagesButton,
 body.famiWeb #bookShadowButton,
 body.famiWeb #themeSelectionContainer,
-body.famiWeb #languageSelectionContainer {
+body.famiWeb #languageSelectionContainer,
+body.famiWeb #paperTextureButton,
+body.famiWeb #bookFoldButton,
+body.famiWeb #lightingButton {
   display: none !important;
 }
 body.famiWeb #loaderContainer {
   background: var(--void);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--accent);
 }
-body.famiWeb #loader .path {
-  stroke: var(--accent);
+body.famiWeb #loaderContainer.hidden {
+  display: none !important;
+}
+body.famiWeb #loaderContainer .thinking-five span {
+  background: var(--accent);
+}
+body.famiWeb .read-wait,
+body.famiWeb .read-miss {
+  margin: 0;
+  color: var(--mute);
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
 }
 body.famiWeb .read-miss {
-  color: var(--mute);
   padding: 2em;
-  text-align: center;
-  font-size: 16px;
+}
+body.famiWeb #pageWait {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  pointer-events: none;
+  color: var(--accent);
+}
+body.famiWeb #pageWait[hidden] {
+  display: none !important;
+}
+body.famiWeb #pageWait p {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--mute);
+}
+body.famiWeb #pageWait .thinking-five span {
+  background: var(--accent);
+}
+@media (min-width: 600px) {
+  body.famiWeb #configMenu.batch-tag-sheet {
+    min-height: 0;
+    padding: 16px;
+    width: min(360px, 100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.famiWeb #navImage.is-page-in,
+  body.famiWeb #navImage.is-page-in-next,
+  body.famiWeb #navImage.is-page-in-prev {
+    animation: none;
+  }
 }
 input, textarea, select {
   -webkit-user-select: text;

@@ -15,16 +15,19 @@
   const cabHud = document.getElementById("cab-hud");
   const faceImg = document.getElementById("face-img");
   const readerName = document.getElementById("reader-name");
-  const gearBtn = document.getElementById("gear-btn");
   const coverInput = document.getElementById("cover-input");
   const modeAll = document.getElementById("mode-all");
   const modeList = document.getElementById("mode-list");
-  const modeFind = document.getElementById("mode-find");
+  let settingsWrap = null;
+  let settingsCatch = null;
+  const GEAR =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 3.8l.6-1.3h3.6l.6 1.3 1.6.7 1.4-.5 2.5 2.5-.5 1.4.7 1.6 1.3.6v3.6l-1.3.6-.7 1.6.5 1.4-2.5 2.5-1.4-.5-1.6.7-.6 1.3h-3.6l-.6-1.3-1.6-.7-1.4.5-2.5-2.5.5-1.4-.7-1.6-1.3-.6v-3.6l1.3-.6.7-1.6-.5-1.4L6.6 4l1.4.5 1.6-.7z" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/><circle cx="12" cy="11.9" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+  const CAMERA =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="8" width="17" height="11.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 8l1.4-2.4h5.2L16 8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13.6" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>';
 
   let key = "";
   let busy = false;
   let lastShelf = null;
-  let filterTags = [];
   let mode = "list";
   let cwd = "";
   let offset = 0;
@@ -50,6 +53,177 @@
   function setCabRun(on) {
     const cover = document.querySelector("#cab-hud .cab-cover");
     if (cover) cover.classList.toggle("is-run", !!on);
+  }
+
+  function insButton(className, svg, label) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "ins-icon " + className;
+    btn.setAttribute("aria-label", label);
+    btn.title = label;
+    const ring = document.createElement("span");
+    ring.className = "ins-ring";
+    const face = document.createElement("span");
+    face.className = "ins-face";
+    face.innerHTML = svg;
+    btn.appendChild(ring);
+    btn.appendChild(face);
+    return btn;
+  }
+
+  function jobBadge(svg) {
+    const badge = document.createElement("span");
+    badge.className = "ins-icon job-icon";
+    badge.setAttribute("aria-hidden", "true");
+    const ring = document.createElement("span");
+    ring.className = "ins-ring";
+    const face = document.createElement("span");
+    face.className = "ins-face";
+    face.innerHTML = svg;
+    badge.appendChild(ring);
+    badge.appendChild(face);
+    return badge;
+  }
+
+  function setJobRun(entry, on) {
+    if (!entry) return;
+    entry.classList.toggle("is-run", !!on);
+    entry.disabled = !!on;
+    entry.setAttribute("aria-disabled", on ? "true" : "false");
+    const badge = entry.querySelector(".ins-icon");
+    if (badge) badge.classList.toggle("is-run", !!on);
+  }
+
+  function closeSettings() {
+    const wrap = settingsWrap || document.getElementById("album-settings");
+    if (!wrap) return;
+    const menu = wrap.querySelector(".settings-menu") || document.querySelector(".settings-menu");
+    const toggle = wrap.querySelector(".settings-toggle");
+    if (menu) {
+      menu.hidden = true;
+      if (menu.parentNode !== wrap) wrap.appendChild(menu);
+    }
+    if (toggle) {
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.classList.remove("is-live");
+    }
+    if (settingsCatch) settingsCatch.hidden = true;
+    document.documentElement.classList.remove("settings-open");
+  }
+
+  function ensureSettingsCatch() {
+    if (settingsCatch && settingsCatch.isConnected) return settingsCatch;
+    const catcher = document.createElement("div");
+    catcher.className = "settings-catch";
+    catcher.hidden = true;
+    catcher.addEventListener("pointerdown", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    });
+    catcher.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      closeSettings();
+    });
+    document.body.appendChild(catcher);
+    settingsCatch = catcher;
+    return catcher;
+  }
+
+  function placeSettingsMenu(toggle, menu) {
+    if (!toggle || !menu || menu.hidden) return;
+    const box = toggle.getBoundingClientRect();
+    const pad = 10;
+    const vv = window.visualViewport;
+    const vw = vv ? vv.width : window.innerWidth;
+    const vh = vv ? vv.height : window.innerHeight;
+    const vo = vv ? vv.offsetTop : 0;
+    const vl = vv ? vv.offsetLeft : 0;
+    const mw = menu.offsetWidth || 220;
+    const mh = menu.offsetHeight || 200;
+    let left = box.right - mw;
+    if (left < vl + pad) left = vl + pad;
+    if (left + mw > vl + vw - pad) left = Math.max(vl + pad, vl + vw - mw - pad);
+    let top = box.bottom + 8;
+    if (top + mh > vo + vh - pad) top = box.top - mh - 8;
+    if (top < vo + pad) top = vo + pad;
+    menu.style.position = "fixed";
+    menu.style.right = "auto";
+    menu.style.bottom = "auto";
+    menu.style.left = Math.round(left) + "px";
+    menu.style.top = Math.round(top) + "px";
+  }
+
+  function openSettingsMenu(toggle, menu) {
+    const catcher = ensureSettingsCatch();
+    catcher.hidden = false;
+    document.body.appendChild(catcher);
+    document.body.appendChild(menu);
+    menu.hidden = false;
+    document.documentElement.classList.add("settings-open");
+    requestAnimationFrame(function () {
+      placeSettingsMenu(toggle, menu);
+    });
+  }
+
+  function ensureSettings() {
+    if (settingsWrap && settingsWrap.isConnected) return settingsWrap;
+    settingsWrap = null;
+    const wrap = document.createElement("div");
+    settingsWrap = wrap;
+    wrap.id = "album-settings";
+    wrap.className = "album-settings";
+    wrap.hidden = true;
+    const toggle = insButton("settings-toggle", GEAR, "設定");
+    toggle.setAttribute("aria-expanded", "false");
+    const menu = document.createElement("div");
+    menu.className = "settings-menu";
+    menu.setAttribute("role", "menu");
+    menu.hidden = true;
+    menu.addEventListener("pointerdown", function (ev) {
+      ev.stopPropagation();
+    });
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "settings-entry";
+    btn.setAttribute("role", "menuitem");
+    btn.dataset.job = "cover";
+    btn.appendChild(jobBadge(CAMERA));
+    const text = document.createElement("span");
+    text.textContent = "更換頭像";
+    btn.appendChild(text);
+    btn.addEventListener("click", function () {
+      if (btn.classList.contains("is-run") || btn.disabled) return;
+      closeSettings();
+      if (coverInput) coverInput.click();
+    });
+    menu.appendChild(btn);
+    toggle.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const open = menu.hidden;
+      if (open) openSettingsMenu(toggle, menu);
+      else closeSettings();
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      toggle.classList.toggle("is-live", open);
+    });
+    wrap.appendChild(toggle);
+    wrap.appendChild(menu);
+    const host = document.querySelector("#cab-hud .cab-wrap");
+    if (host) host.appendChild(wrap);
+    else document.body.appendChild(wrap);
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") closeSettings();
+    });
+    window.addEventListener("resize", function () {
+      placeSettingsMenu(toggle, menu);
+    });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", function () {
+        placeSettingsMenu(toggle, menu);
+      });
+    }
+    return wrap;
   }
 
   function showInvite() {
@@ -87,6 +261,10 @@
       }
     }
     cabHud.hidden = false;
+    const settings = ensureSettings();
+    const host = cabHud.querySelector(".cab-wrap");
+    if (host && settings.parentNode !== host) host.appendChild(settings);
+    settings.hidden = false;
   }
 
   function paintProgress() {
@@ -294,7 +472,6 @@
   function updateModeButtons() {
     if (modeAll) modeAll.classList.toggle("is-on", mode === "all");
     if (modeList) modeList.classList.toggle("is-on", mode === "list");
-    if (modeFind) modeFind.classList.toggle("is-on", false);
   }
 
   async function loadShelf(reset) {
@@ -308,12 +485,11 @@
       updateModeButtons();
     }
     loadingMore = true;
-    const tags = filterTags.length ? "&tags=" + encodeURIComponent(filterTags.join(",")) : "";
     const view = mode === "list" ? "list" : "all";
     const folder = mode === "list" && cwd ? "&cwd=" + encodeURIComponent(cwd) : "";
     try {
       const x = await window.FamiGate.api(
-        "/api/shelf?view=" + view + "&offset=" + offset + "&limit=" + LIMIT + tags + folder,
+        "/api/shelf?view=" + view + "&offset=" + offset + "&limit=" + LIMIT + folder,
         key,
         { timeout: 20000 }
       );
@@ -454,48 +630,31 @@
     if (homeInstall) homeInstall.hidden = true;
   });
 
-  if (gearBtn) gearBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const menu = document.getElementById("gear-menu");
-    if (!menu) return;
-    if (menu.parentNode !== document.body) document.body.appendChild(menu);
-    menu.hidden = !menu.hidden;
-    const r = gearBtn.getBoundingClientRect();
-    menu.style.left = Math.max(12, r.right - 200) + "px";
-    menu.style.top = r.bottom + 8 + "px";
-  });
-  const actCover = document.getElementById("act-cover");
-  if (actCover) actCover.addEventListener("click", () => {
-    const menu = document.getElementById("gear-menu");
-    if (menu) menu.hidden = true;
-    if (coverInput) coverInput.click();
-  });
-  const actClear = document.getElementById("act-clear");
-  if (actClear) actClear.addEventListener("click", async () => {
-    const menu = document.getElementById("gear-menu");
-    if (menu) menu.hidden = true;
-    if (!confirm("清掉你的標籤和看到第幾頁？書還在。")) return;
-    await window.FamiGate.api("/api/me/clear", key, { method: "POST", timeout: 15000 });
-    loadShelf(true);
-  });
   if (coverInput) coverInput.addEventListener("change", async () => {
     const file = coverInput.files && coverInput.files[0];
     if (!file) return;
-    const fd = new FormData();
-    fd.append("cover", file);
-    await fetch(window.FamiGate.origin() + "/api/cover?k=" + encodeURIComponent(key), { method: "POST", body: fd });
-    const door = await window.FamiGate.api("/api/door", key, { timeout: 15000 });
-    if (door.j && door.j.reader) renderMe(door.j.reader);
+    const entry = document.querySelector('.settings-entry[data-job="cover"]');
+    setJobRun(entry, true);
+    setCabRun(true);
+    try {
+      const fd = new FormData();
+      fd.append("cover", file);
+      await fetch(window.FamiGate.origin() + "/api/cover?k=" + encodeURIComponent(key), { method: "POST", body: fd });
+      const door = await window.FamiGate.api("/api/door", key, { timeout: 15000 });
+      if (door.j && door.j.reader) renderMe(door.j.reader);
+    } finally {
+      setJobRun(entry, false);
+      setCabRun(false);
+      coverInput.value = "";
+    }
   });
 
   if (modeAll) modeAll.addEventListener("click", function () {
-    filterTags = [];
     cwd = "";
     mode = "all";
     loadShelf(true);
   });
   if (modeList) modeList.addEventListener("click", function () {
-    filterTags = [];
     cwd = "";
     mode = "list";
     loadShelf(true);
@@ -503,12 +662,6 @@
 
   window.FamiShelf = {
     reload: () => loadShelf(true),
-    setFilter: (ids) => {
-      filterTags = ids || [];
-      cwd = "";
-      mode = "all";
-      loadShelf(true);
-    },
     key: () => key,
     setCabRun: setCabRun,
   };
