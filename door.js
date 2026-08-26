@@ -55,6 +55,7 @@
   let isGm = false;
   let hostView = true;
   let hostTab = "all";
+  let hostQuery = "";
   try {
     if (localStorage.getItem("famibook.hostView") === "0") hostView = false;
   } catch (e) {}
@@ -752,6 +753,9 @@
         return;
       }
       if (item.kind === "job") return;
+      if (hostOn() && window.FamiHost && window.FamiHost.onTileClick && window.FamiHost.onTileClick(item)) {
+        return;
+      }
       if (!item.has_pages) return;
       openReader(item);
     });
@@ -790,6 +794,7 @@
         hostTab = pair[0];
         cwd = "";
         parentCwd = "";
+        hostQuery = "";
         bar.querySelectorAll(".mode-btn").forEach(function (el) {
           el.classList.toggle("is-on", el.dataset.mode === hostTab);
         });
@@ -801,7 +806,7 @@
   }
 
   function viewKey() {
-    return (hostOn() ? (hostTab || "all") : "list") + "|" + (cwd || "");
+    return (hostOn() ? (hostTab || "all") : "list") + "|" + (cwd || "") + "|" + (hostQuery || "");
   }
 
   function feedBookTiles() {
@@ -939,8 +944,9 @@
     const reqOffset = reset ? 0 : offset;
     const folder = cwd ? "&cwd=" + encodeURIComponent(cwd) : "";
     const tab = hostOn() ? "&tab=" + encodeURIComponent(hostTab || "all") : "";
+    const q = hostOn() && hostQuery ? "&q=" + encodeURIComponent(hostQuery) : "";
     const path = hostOn()
-      ? "/api/host/shelf?offset=" + reqOffset + "&limit=" + LIMIT + folder + tab
+      ? "/api/host/shelf?offset=" + reqOffset + "&limit=" + LIMIT + folder + tab + q
       : "/api/shelf?view=list&offset=" + reqOffset + "&limit=" + LIMIT + folder;
     try {
       const x = await window.FamiGate.api(path, key, { timeout: 20000 });
@@ -1172,6 +1178,7 @@
     },
     setKind: function (kind) { hostTab = kind || "all"; },
     setTab: function (tab) { hostTab = tab || "all"; },
+    setQuery: function (q) { hostQuery = q || ""; },
     setCabRun: setCabRun,
   };
 

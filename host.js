@@ -17,6 +17,8 @@
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h3v12H8zM13 6h3v12h-3z" fill="currentColor"/></svg>';
   const PLAY =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6l12 6-12 6z" fill="currentColor"/></svg>';
+  const MAG =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15.2 15.2L20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
   const JOB_LABEL = {
     capture: "截取",
     series: "全套截取",
@@ -24,6 +26,7 @@
     generate_research: "日常研究",
     generate_steam: "遊戲研究",
     pdf: "PDF",
+    cover: "封面",
   };
 
   let key = "";
@@ -38,6 +41,11 @@
   let orgSnap = { folders: [], favorites: [] };
   let noteTimer = 0;
   let jobsBusy = false;
+  let lastSnap = {
+    stop_capture: false,
+    stop_steam: false,
+    stop_research: false,
+  };
 
   function api(path, opts) {
     return window.FamiGate.api(path, key, Object.assign({ timeout: 20000 }, opts || {}));
@@ -130,15 +138,47 @@
     const menu = document.querySelector("#album-settings .settings-menu");
     if (!menu) return;
     menu.querySelectorAll("[data-host-adv]").forEach(function (n) { n.remove(); });
-    const books = pagedBooks();
-    if (!books.length) return;
-    menu.appendChild(gearBtn(TEXT, "文字", "text", function () {
-      books.forEach(function (it) { enqueue("generate", it.id, it.title); });
-    }));
-    menu.appendChild(gearBtn(PDF, "PDF", "pdf", function () {
-      books.forEach(function (it) { enqueue("pdf", it.id, it.title); });
-    }));
-    if (isDesktop()) {
+    const head = [];
+    head.push(gearBtn(MAG, "找書", "find", openFind));
+    head.push(gearBtn(PLUS, "新增…", "plus", openPlus));
+    head.push(gearBtn(
+      lastSnap.stop_capture ? PLAY : PAUSE,
+      lastSnap.stop_capture ? "繼續擷取佇列" : "暫停擷取佇列",
+      "q-capture",
+      function () { toggleQueue("capture", !!lastSnap.stop_capture); }
+    ));
+    head.push(gearBtn(
+      lastSnap.stop_steam ? PLAY : PAUSE,
+      lastSnap.stop_steam ? "繼續遊戲佇列" : "暫停遊戲佇列",
+      "q-steam",
+      function () { toggleQueue("steam", !!lastSnap.stop_steam); }
+    ));
+    head.push(gearBtn(
+      lastSnap.stop_research ? PLAY : PAUSE,
+      lastSnap.stop_research ? "繼續研究佇列" : "暫停研究佇列",
+      "q-research",
+      function () { toggleQueue("research", !!lastSnap.stop_research); }
+    ));
+    const first = menu.firstChild;
+    head.forEach(function (row) { menu.insertBefore(row, first); });
+    const books = pickedItems().filter(function (it) {
+      return it && it.kind !== "org" && it.kind !== "job";
+    });
+    if (books.length === 1) {
+      menu.appendChild(gearBtn(TEXT, "這本…", "this", function () {
+        openActFor(books[0]);
+      }));
+    }
+    const paged = pagedBooks();
+    if (paged.length > 1) {
+      menu.appendChild(gearBtn(TEXT, "文字", "text", function () {
+        paged.forEach(function (it) { enqueue("generate", it.id, it.title); });
+      }));
+      menu.appendChild(gearBtn(PDF, "PDF", "pdf", function () {
+        paged.forEach(function (it) { enqueue("pdf", it.id, it.title); });
+      }));
+    }
+    if (isDesktop() && books.length) {
       menu.appendChild(gearBtn(DESK, "在電腦開", "open", function () {
         books.forEach(function (it) { enqueue("open_folder", it.id, it.title); });
       }));
@@ -314,11 +354,11 @@
     askFn = null;
   }
 
-  function addConfirm(body, fn) {
+  function addConfirm(body, fn, label) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "tag-apply";
-    btn.innerHTML = '<span class="tag-apply-face">確認</span>';
+    btn.innerHTML = '<span class="tag-apply-face">' + (label || "確認") + "</span>";
     btn.addEventListener("click", fn);
     body.appendChild(btn);
   }
@@ -347,8 +387,10 @@
     box.className = "tag-row";
     [
       ["capture", "截取書籍"],
+      ["folder", "資料夾"],
       ["research", "日常研究"],
       ["steam", "遊戲研究"],
+      ["batch_steam", "批次遊戲"],
       ["title", "一般書籍"],
     ].forEach(function (pair) {
       const chip = document.createElement("button");
@@ -359,6 +401,193 @@
       box.appendChild(chip);
     });
     body.appendChild(box);
+  }
+
+  function toggleQueue(queue, resume) {
+    post("/api/host/jobs", { op: resume ? "resume" : "stop", queue: queue }).then(function (x) {
+      if (x.res.ok && x.j) paintJobsHud(x.j, true);
+    });
+  }
+
+  function openFind() {
+    const mask = document.getElementById("findMask");
+    const body = document.getElementById("findBody");
+    const title = mask && mask.querySelector(".batch-tag-head p");
+    if (!mask || !body) return;
+    if (title) title.textContent = "找書";
+    body.innerHTML = "";
+    const pending = { tab: tab() || "all", q: "" };
+    body.appendChild(chipRow(
+      [["all", "所有"], ["research", "研究"], ["title", "書籍"], ["manga", "漫畫"], ["jobs", "工作"]],
+      pending.tab,
+      function (kind) {
+        pending.tab = kind;
+        body.querySelectorAll(".tag-chip").forEach(function (el) {
+          el.classList.toggle("is-on", el.textContent && (
+            (kind === "all" && el.textContent === "所有") ||
+            (kind === "research" && el.textContent === "研究") ||
+            (kind === "title" && el.textContent === "書籍") ||
+            (kind === "manga" && el.textContent === "漫畫") ||
+            (kind === "jobs" && el.textContent === "工作")
+          ));
+        });
+      }
+    ));
+    const row = document.createElement("div");
+    row.className = "apple-row";
+    const input = document.createElement("input");
+    input.autocomplete = "off";
+    input.setAttribute("aria-label", "書名");
+    row.appendChild(input);
+    body.appendChild(row);
+    addConfirm(body, function () {
+      pending.q = input.value || "";
+      closeFind();
+      if (window.FamiShelf && window.FamiShelf.setQuery) window.FamiShelf.setQuery(pending.q);
+      if (window.FamiShelf && window.FamiShelf.setTab) window.FamiShelf.setTab(pending.tab);
+      const bar = document.getElementById("mode-bar");
+      if (bar) {
+        bar.querySelectorAll(".mode-btn").forEach(function (el) {
+          el.classList.toggle("is-on", el.dataset.mode === pending.tab);
+        });
+      }
+      reload();
+    }, "找書");
+    mask.hidden = false;
+    setTimeout(function () { input.focus(); }, 50);
+  }
+
+  function onTileClick(item) {
+    if (!item || item.kind === "job" || item.kind === "folder" || item.kind === "org") return false;
+    if (item.has_pages) return false;
+    openActFor(item);
+    return true;
+  }
+
+  function openActFor(item) {
+    if (!item) return;
+    if (item.kind === "job") return;
+    form = null;
+    actItem = item;
+    if (item.kind === "org") {
+      openActTitle(item.title || "資料夾");
+      paintActActions(item);
+      return;
+    }
+    openActTitle(item.title || "操作");
+    paintActActions(item);
+  }
+
+  function actChip(label, fn) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "tag-chip";
+    chip.textContent = label;
+    chip.addEventListener("click", fn);
+    return chip;
+  }
+
+  function paintActActions(item) {
+    const body = openActBody();
+    if (!body) return;
+    const box = document.createElement("div");
+    box.className = "tag-row";
+    const kind = item.kind || "";
+    if (kind === "org" || kind === "folder") {
+      box.appendChild(actChip("拍封面", function () { enqueue("cover", item.id, item.title); closeAct(); }));
+      box.appendChild(actChip("更改名稱", function () { startForm("rename_org", item); }));
+      box.appendChild(actChip("丟掉", function () {
+        closeAct();
+        selected = new Set([item.id]);
+        selectMode = true;
+        confirmTrash();
+      }));
+      body.appendChild(box);
+      return;
+    }
+    if (kind === "research") {
+      box.appendChild(actChip("繼續研究", function () {
+        enqueue("generate_research", item.id, item.title);
+        closeAct();
+      }));
+    } else if (kind === "steam") {
+      box.appendChild(actChip("重新生成", function () {
+        enqueue("generate_steam", item.id, item.title);
+        closeAct();
+      }));
+    } else {
+      box.appendChild(actChip("開始擷取", function () { startCaptureFlow(item); }));
+      box.appendChild(actChip("新增下一集", function () {
+        post("/api/host/item", { op: "next_volume", book: item.id }).then(function (x) {
+          closeAct();
+          reload();
+          if (x.j && x.j.id) afterCreate(x.j.id);
+        });
+      }));
+      box.appendChild(actChip(item.reverse_turn ? "翻頁：左翻" : "翻頁：右翻", function () {
+        post("/api/host/item", { op: "toggle_turn", book: item.id }).then(function (x) {
+          if (x.res.ok && x.j) {
+            item.reverse_turn = !!x.j.reverse_turn;
+            flashNote(item.reverse_turn ? "左翻 ←" : "右翻 →");
+            paintActActions(item);
+          }
+        });
+      }));
+    }
+    box.appendChild(actChip("生成文字", function () { enqueue("generate", item.id, item.title); closeAct(); }));
+    box.appendChild(actChip("匯出 PDF", function () { enqueue("pdf", item.id, item.title); closeAct(); }));
+    box.appendChild(actChip("拍封面", function () { enqueue("cover", item.id, item.title); closeAct(); }));
+    box.appendChild(actChip("移至資料夾", function () {
+      closeAct();
+      selected = new Set([item.id]);
+      selectMode = true;
+      paintPicks();
+      openFolderSheet();
+    }));
+    box.appendChild(actChip("更改書名", function () { startForm("rename", item); }));
+    box.appendChild(actChip("丟掉", function () {
+      closeAct();
+      selected = new Set([item.id]);
+      selectMode = true;
+      confirmTrash();
+    }));
+    if (isDesktop()) {
+      box.appendChild(actChip("在電腦開", function () {
+        enqueue("open_folder", item.id, item.title);
+        closeAct();
+      }));
+    }
+    body.appendChild(box);
+  }
+
+  function startCaptureFlow(item) {
+    openActTitle("開始擷取");
+    const body = openActBody();
+    if (!body) return;
+    const box = document.createElement("div");
+    box.className = "tag-row";
+    [["capture", "這一本"], ["series", "全套"]].forEach(function (pair) {
+      box.appendChild(actChip(pair[1], function () {
+        if (item.has_reader_url) {
+          enqueue(pair[0], item.id, item.title);
+          closeAct();
+          return;
+        }
+        askReaderUrl(item, pair[0]);
+      }));
+    });
+    body.appendChild(box);
+  }
+
+  function askReaderUrl(item, kind) {
+    form = {
+      kind: "reader_url",
+      item: item,
+      steps: [{ key: "url", label: "閱讀網址" }],
+      idx: 0,
+      data: { jobKind: kind },
+    };
+    paintForm();
   }
 
   function enterSelect(id) {
@@ -561,11 +790,16 @@
         { key: "title", label: "書名" },
         { key: "series", label: "系列" },
         { key: "volume", label: "集號" },
+        { key: "url", label: "閱讀網址" },
       ];
     }
     if (kind === "title") return [{ key: "title", label: "書名" }];
+    if (kind === "folder") return [{ key: "title", label: "資料夾名稱" }];
     if (kind === "new_org") return [{ key: "title", label: "資料夾名稱" }];
     if (kind === "rename_org") return [{ key: "title", label: "名稱", value: item && item.title }];
+    if (kind === "rename") return [{ key: "title", label: "書名", value: item && item.title }];
+    if (kind === "reader_url") return [{ key: "url", label: "閱讀網址" }];
+    if (kind === "batch_steam") return [{ key: "lines", label: "每行一本", area: true }];
     if (kind === "research") {
       return [
         { key: "title", label: "主題" },
@@ -613,9 +847,9 @@
     }
     const row = document.createElement("div");
     row.className = "apple-row";
-    const input = document.createElement("input");
+    const input = step.area ? document.createElement("textarea") : document.createElement("input");
+    if (!step.area) input.autocomplete = "off";
     input.value = form.data[step.key] || step.value || "";
-    input.autocomplete = "off";
     row.appendChild(input);
     const last = form.idx >= form.steps.length - 1;
     if (!last) {
@@ -632,7 +866,7 @@
       addConfirm(body, function () { advance(input.value); });
     }
     input.addEventListener("keydown", function (ev) {
-      if (ev.key === "Enter") {
+      if (ev.key === "Enter" && !step.area) {
         ev.preventDefault();
         advance(input.value);
       }
@@ -676,9 +910,20 @@
         if (!x.res.ok) return x;
         const id = x.j && x.j.id;
         const title = (x.j && x.j.title) || data.title;
+        const extra = {};
+        if ((data.url || "").trim()) extra.reader_url = data.url.trim();
         return afterCreate(id).then(function () {
-          return enqueue("capture", id, title);
+          return enqueue("capture", id, title, extra);
         }).then(function () { return x; });
+      });
+    } else if (kind === "reader_url") {
+      const item = form.item;
+      const url = (data.url || "").trim();
+      const jobKind = (form.data && form.data.jobKind) || "capture";
+      const extra = {};
+      if (url) extra.reader_url = url;
+      req = enqueue(jobKind, item && item.id, item && item.title, extra).then(function (x) {
+        return x;
       });
     } else if (kind === "title") {
       req = post("/api/host/item", {
@@ -719,6 +964,21 @@
         title: data.title || "",
         books: (item && item.books) || [],
       });
+    } else if (kind === "folder") {
+      req = post("/api/host/item", {
+        op: "create_folder",
+        name: data.title || "",
+        cwd: cwd(),
+      });
+    } else if (kind === "rename" && item) {
+      req = post("/api/host/item", { op: "rename", book: item.id, title: data.title || "" });
+    } else if (kind === "batch_steam") {
+      req = post("/api/host/item", {
+        op: "batch_steam",
+        lines: data.lines || "",
+        cwd: cwd(),
+        start_queue: true,
+      });
     } else if (kind === "rename_org" && item) {
       req = post("/api/host/org", { op: "folder_rename", folder: item.id, title: data.title || "" });
     } else {
@@ -739,6 +999,7 @@
   }
 
   function paintJobsHud(snap, reconcile) {
+    if (snap) lastSnap = snap;
     const cover = document.querySelector("#cab-hud .cab-cover");
     const current = snap && snap.current;
     const queued = (snap && snap.queued) || [];
@@ -749,6 +1010,7 @@
       row.hidden = true;
       row.innerHTML = "";
     }
+    syncGear();
     if (reconcile && isJobs()) syncJobTiles(snap);
   }
 
@@ -763,6 +1025,7 @@
     if (!item) return "";
     if (item.state === "running") return JOB_LABEL[item.job_kind] || "進行中";
     if (item.state === "paused") return "已暫停";
+    if (item.state === "error") return item.error || "失敗";
     return "尚未開始";
   }
 
@@ -777,6 +1040,7 @@
       job_kind: row.kind,
       state: row.state,
       percent: row.percent,
+      error: row.error || "",
       has_cover: !!row.book,
       has_pages: false,
       pinned: row.state === "running",
@@ -1037,6 +1301,8 @@
     attach: attach,
     bindTile: bindTile,
     openPlus: openPlus,
+    openActFor: openActFor,
+    onTileClick: onTileClick,
     isSelect: function () { return selectMode; },
     clearSelect: clearSelect,
     afterPaint: afterPaint,
