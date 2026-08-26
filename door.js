@@ -34,7 +34,7 @@
   const LIMIT = 40;
   const FIRST = 12;
   const THUMB_CAP = 6;
-  const THUMB_CACHE = "famibook-thumbs-v1";
+  const THUMB_CACHE = "famibook-thumbs-v2";
   let thumbGen = 0;
   let thumbActive = 0;
   const thumbWait = [];
@@ -287,38 +287,47 @@
     if (!feed) return;
     feed.querySelectorAll(".tile").forEach(function (el) {
       const item = catalog[el.dataset.id];
-      const barWrap = el.querySelector(".tile-progress");
-      const bar = el.querySelector(".tile-progress > span");
-      if (!item || item.kind === "folder" || !barWrap || !bar) {
-        if (barWrap) barWrap.hidden = true;
+      const pct = el.querySelector(".tile-pct");
+      if (!pct) return;
+      const label = readLabel(item);
+      if (!label) {
+        pct.hidden = true;
+        pct.textContent = "";
         return;
       }
-      const pages = Number(item.page_count) || 0;
-      const pos = item.progress;
-      if (pages > 0 && pos != null && pos > 0) {
-        barWrap.hidden = false;
-        bar.style.width = Math.max(2, Math.min(100, ((Number(pos) + 1) / pages) * 100)) + "%";
-      } else {
-        barWrap.hidden = true;
-      }
+      pct.hidden = false;
+      pct.textContent = label;
     });
+  }
+
+  function readLabel(item) {
+    if (!item || item.kind === "folder") return "";
+    if (item.finished) return "已閱讀";
+    if (item.progress == null) return "未閱讀";
+    const pages = Number(item.page_count) || 0;
+    if (pages <= 0) return "未閱讀";
+    const pct = Math.max(1, Math.min(100, Math.round((Number(item.progress) + 1) / pages * 100)));
+    return pct + "%";
   }
 
   function openReader(item) {
     if (!item || item.kind === "folder") return;
     const token = key;
+    const end = item.finished ? "&end=1" : "";
     location.href = "./read.html?book=" + encodeURIComponent(item.id)
       + "&k=" + encodeURIComponent(token)
+      + end
       + "#k=" + encodeURIComponent(token);
   }
 
   function thumbUrl(item) {
-    return window.FamiGate.origin() + "/thumb?book=" + encodeURIComponent(item.id) + "&k=" + encodeURIComponent(key);
+    return window.FamiGate.origin() + "/thumb?book=" + encodeURIComponent(item.id)
+      + "&k=" + encodeURIComponent(key) + "&r=" + (item.cover_rev || 0);
   }
 
   function thumbKey(item) {
     const base = location.origin || "https://famibook.local";
-    return base + "/famibook-t/" + encodeURIComponent(item.id);
+    return base + "/famibook-t/" + encodeURIComponent(item.id) + "/" + (item.cover_rev || 0);
   }
 
   function resetThumbs() {
@@ -454,24 +463,24 @@
     img.decoding = "async";
     btn.appendChild(img);
     if (item.has_cover) watchThumb(img, item, index < FIRST);
-    const bar = document.createElement("div");
-    bar.className = "tile-progress";
-    const fill = document.createElement("span");
-    fill.style.width = "0%";
-    bar.appendChild(fill);
-    btn.appendChild(bar);
-    const pages = Number(item.page_count) || 0;
-    const pos = item.progress;
-    if (item.kind !== "folder" && pages > 0 && pos != null && pos > 0) {
-      bar.hidden = false;
-      fill.style.width = Math.max(2, Math.min(100, ((Number(pos) + 1) / pages) * 100)) + "%";
-    } else {
-      bar.hidden = true;
+    const shield = document.createElement("span");
+    shield.className = "tile-shield";
+    btn.appendChild(shield);
+    if (item.volume != null && item.volume !== "") {
+      const ep = document.createElement("span");
+      ep.className = "tile-ep";
+      ep.textContent = String(item.volume);
+      btn.appendChild(ep);
     }
-    const cap = document.createElement("span");
-    cap.className = "tile-label";
-    cap.textContent = item.title || "";
-    btn.appendChild(cap);
+    const pct = document.createElement("span");
+    pct.className = "tile-pct";
+    const label = readLabel(item);
+    if (label) {
+      pct.textContent = label;
+    } else {
+      pct.hidden = true;
+    }
+    btn.appendChild(pct);
     btn.addEventListener("click", function (ev) {
       ev.preventDefault();
       if (item.kind === "folder") {
@@ -564,6 +573,8 @@
         return;
       }
       hideInvite();
+      const blobs = document.querySelector(".blobs");
+      if (blobs) blobs.hidden = true;
       window.FamiGate.savePersonal(key);
       window.FamiGate.pinKey(key);
       renderMe(x.j.reader);

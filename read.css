@@ -379,11 +379,68 @@ body.famiWeb #pageWait p {
 body.famiWeb #pageWait .thinking-five span {
   background: var(--accent);
 }
+body.famiWeb #endMask {
+  z-index: 50;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 20px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+}
+body.famiWeb #endSheet.batch-tag-sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: var(--sheet-action-width);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.98);
+  color: var(--ink);
+}
+body.famiWeb .end-cover {
+  position: relative;
+  width: min(200px, 58vw);
+  aspect-ratio: 2 / 3;
+  margin: 4px auto 16px;
+  overflow: hidden;
+  background: #efe8ea;
+}
+body.famiWeb .end-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+body.famiWeb .end-copy {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}
+body.famiWeb #endSheet .tag-apply {
+  width: 100%;
+  margin: 0 0 10px;
+}
+body.famiWeb #endHome.ins-icon {
+  margin: 10px auto 0;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.18));
+}
+body.famiWeb #endHome svg {
+  width: 18px;
+  height: 18px;
+  color: #1c1c1e;
+}
 @media (min-width: 600px) {
   body.famiWeb #configMenu.batch-tag-sheet {
     min-height: 0;
     padding: 16px;
     width: min(360px, 100%);
+  }
+  body.famiWeb #endMask {
+    align-items: center;
+  }
+  body.famiWeb #endSheet.batch-tag-sheet {
+    min-height: var(--sheet-action-min-wide);
   }
 }
 @media (prefers-reduced-motion: reduce) {
