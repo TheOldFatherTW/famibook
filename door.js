@@ -41,6 +41,19 @@
   let loadingMore = false;
   let total = 0;
   let catalog = {};
+  let isGm = false;
+  let hostTab = "all";
+  const MODES = [
+    ["all", "所有"],
+    ["research", "研究"],
+    ["title", "書籍"],
+    ["manga", "漫畫"],
+    ["jobs", "工作"],
+  ];
+  const HEART =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.2 20s-6.7-4.2-8.6-8.1C2.2 9.1 3.4 6 6.6 6c1.8 0 3 1.1 3.6 2.2C10.8 7.1 12 6 13.8 6c3.2 0 4.4 3.1 3 5.9-1.9 3.9-8.6 8.1-8.6 8.1z"/></svg>';
+  const FOLDER_MARK =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h6l2 2h8v10H4z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
 
   function setBoot(on, text) {
     if (!hall) return;
@@ -300,7 +313,7 @@
   }
 
   function readLabel(item) {
-    if (!item || item.kind === "folder") return "";
+    if (!item || item.kind === "folder" || item.kind === "org" || item.kind === "job") return "";
     if (item.finished) return "已閱讀";
     if (item.progress == null) return "未閱讀";
     const pages = Number(item.page_count) || 0;
@@ -331,7 +344,8 @@
   }
 
   function thumbUrl(item) {
-    return window.FamiGate.origin() + "/thumb?book=" + encodeURIComponent(item.id)
+    const bid = item.cover_book || item.id;
+    return window.FamiGate.origin() + "/thumb?book=" + encodeURIComponent(bid)
       + "&k=" + encodeURIComponent(key) + "&r=" + (item.cover_rev || 0);
   }
 
@@ -467,15 +481,28 @@
     btn.type = "button";
     btn.className = "tile";
     btn.dataset.id = item.id;
-    if (item.kind === "folder") btn.dataset.kind = "folder";
+    if (item.kind === "folder" || item.kind === "org") btn.dataset.kind = item.kind;
+    if (item.pinned) btn.classList.add("is-pinned");
     const img = document.createElement("img");
     img.alt = item.title || "";
     img.decoding = "async";
     btn.appendChild(img);
     if (item.has_cover) watchThumb(img, item, index < FIRST);
+    else if (item.kind === "org") {
+      const mark = document.createElement("span");
+      mark.className = "tile-plus";
+      mark.innerHTML = FOLDER_MARK;
+      btn.appendChild(mark);
+    }
     const shield = document.createElement("span");
     shield.className = "tile-shield";
     btn.appendChild(shield);
+    if (item.favorite) {
+      const heart = document.createElement("span");
+      heart.className = "tile-heart";
+      heart.innerHTML = HEART;
+      btn.appendChild(heart);
+    }
     const epText = epLabel(item);
     if (epText) {
       const ep = document.createElement("span");
@@ -492,13 +519,18 @@
       pct.hidden = true;
     }
     btn.appendChild(pct);
+    if (window.FamiHost && window.FamiHost.bindTile && isGm) {
+      window.FamiHost.bindTile(btn, item);
+    }
     btn.addEventListener("click", function (ev) {
       ev.preventDefault();
-      if (item.kind === "folder") {
+      if (item.kind === "folder" || item.kind === "org") {
         cwd = item.id;
         loadShelf(true);
         return;
       }
+      if (item.kind === "job") return;
+      if (!item.has_pages) return;
       openReader(item);
     });
     return btn;
@@ -506,28 +538,74 @@
 
   function paintBack() {
     const inFolder = !!cwd;
+    const modeBar = document.getElementById("mode-bar");
+    if (isGm) {
+      if (tagBoard) tagBoard.hidden = false;
+      if (modeBar) modeBar.hidden = false;
+      if (shelfBack) shelfBack.hidden = !inFolder;
+      return;
+    }
     if (tagBoard) tagBoard.hidden = !inFolder;
+    if (modeBar) modeBar.hidden = true;
     if (shelfBack) shelfBack.hidden = !inFolder;
+  }
+
+  function ensureModes() {
+    const bar = document.getElementById("mode-bar");
+    if (!bar || bar.dataset.ready) return;
+    bar.dataset.ready = "1";
+    MODES.forEach(function (pair) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "mode-btn" + (hostTab === pair[0] ? " is-on" : "");
+      btn.dataset.mode = pair[0];
+      btn.textContent = pair[1];
+      btn.addEventListener("click", function () {
+        hostTab = pair[0];
+        cwd = "";
+        parentCwd = "";
+        bar.querySelectorAll(".mode-btn").forEach(function (el) {
+          el.classList.toggle("is-on", el.dataset.mode === hostTab);
+        });
+        if (window.FamiHost && window.FamiHost.clearSelect) window.FamiHost.clearSelect();
+        loadShelf(true);
+      });
+      bar.appendChild(btn);
+    });
+  }
+
+  function resetFeed() {
+    offset = 0;
+    resetThumbs();
+    if (feed) feed.innerHTML = "";
+    catalog = {};
+    paintBack();
   }
 
   async function loadShelf(reset) {
     if (!feed) return;
     if (busy && !reset) return;
     if (reset) {
-      offset = 0;
-      resetThumbs();
-      feed.innerHTML = "";
-      catalog = {};
-      paintBack();
+      resetFeed();
+      if (window.FamiHost && window.FamiHost.clearSelect) window.FamiHost.clearSelect();
+    }
+    if (isGm && hostTab === "jobs") {
+      loadingMore = false;
+      total = 1;
+      offset = 1;
+      if (window.FamiHost && window.FamiHost.loadJobs) {
+        return window.FamiHost.loadJobs(false);
+      }
+      return;
     }
     loadingMore = true;
     const folder = cwd ? "&cwd=" + encodeURIComponent(cwd) : "";
+    const tab = isGm ? "&tab=" + encodeURIComponent(hostTab || "all") : "";
+    const path = isGm
+      ? "/api/host/shelf?offset=" + offset + "&limit=" + LIMIT + folder + tab
+      : "/api/shelf?view=list&offset=" + offset + "&limit=" + LIMIT + folder;
     try {
-      const x = await window.FamiGate.api(
-        "/api/shelf?view=list&offset=" + offset + "&limit=" + LIMIT + folder,
-        key,
-        { timeout: 20000 }
-      );
+      const x = await window.FamiGate.api(path, key, { timeout: 20000 });
       if (!x.res.ok || !x.j) return;
       lastShelf = x.j;
       total = x.j.total || 0;
@@ -538,6 +616,7 @@
       (x.j.items || []).forEach((it, i) => feed.appendChild(tileEl(it, start + i)));
       offset += (x.j.items || []).length;
       paintProgress();
+      if (isGm && window.FamiHost && window.FamiHost.afterPaint) window.FamiHost.afterPaint();
     } finally {
       loadingMore = false;
     }
@@ -590,7 +669,10 @@
       if (blobs) blobs.hidden = true;
       window.FamiGate.savePersonal(key);
       window.FamiGate.pinKey(key);
+      isGm = !!(x.j.gm || (x.j.reader && x.j.reader.gm));
       renderMe(x.j.reader);
+      if (isGm) ensureModes();
+      if (isGm && window.FamiHost) window.FamiHost.attach(key);
       setBoot(false, "");
       if (statusEl) statusEl.textContent = "";
       cwd = "";
@@ -699,6 +781,18 @@
   window.FamiShelf = {
     reload: () => loadShelf(true),
     key: () => key,
+    cwd: () => cwd,
+    tab: () => hostTab,
+    catalog: () => catalog,
+    resetFeed: resetFeed,
+    appendTile: function (item, index) {
+      if (!feed) return null;
+      const el = tileEl(item, index || 0);
+      feed.appendChild(el);
+      return el;
+    },
+    setKind: function (kind) { hostTab = kind || "all"; },
+    setTab: function (tab) { hostTab = tab || "all"; },
     setCabRun: setCabRun,
   };
 

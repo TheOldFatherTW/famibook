@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./app.css?v=17"/>
+<link rel="stylesheet" href="./app.css?v=20"/>
 <script src="./config.js?v=1787662694"></script>
 <script>
 (function () {
@@ -107,6 +107,8 @@
     <p class="reader-name" id="reader-name"></p>
   </div>
   <div class="tag-board" id="tag-board" hidden>
+    <div class="mode-bar" id="mode-bar" hidden></div>
+    <div class="tag-row" id="job-stops" hidden></div>
     <button type="button" class="ins-icon nav-back" id="shelf-back" hidden aria-label="返回書櫃">
       <span class="ins-ring"></span>
       <span class="ins-face">
@@ -116,13 +118,42 @@
   </div>
   <div class="feed" id="feed"></div>
 </div>
+<aside class="photo-rail" id="photo-rail" hidden aria-label="書櫃操作"></aside>
 <input id="cover-input" type="file" accept="image/*" hidden/>
+<div class="batch-tag-mask list-tag-mask" id="findMask" hidden>
+  <div class="list-tag-sheet" id="findSheet">
+    <div class="batch-tag-head">
+      <p>找書</p>
+      <button type="button" class="batch-tag-close" id="findClose" aria-label="關閉">×</button>
+    </div>
+    <div class="list-tag-body" id="findBody"></div>
+  </div>
+</div>
+<div class="batch-tag-mask" id="actMask" hidden>
+  <div class="batch-tag-sheet" id="actSheet">
+    <div class="batch-tag-head">
+      <p id="actTitle">操作</p>
+      <button type="button" class="batch-tag-close" id="actClose" aria-label="關閉">×</button>
+    </div>
+    <div id="actBody"></div>
+  </div>
+</div>
+<div class="ask-mask" id="askMask" hidden>
+  <div class="ask-card" role="dialog" aria-modal="true">
+    <p id="askText">丟掉這本?</p>
+    <div class="ask-actions">
+      <button type="button" class="ask-no" id="askNo">取消</button>
+      <button type="button" class="ask-yes" id="askYes">丟掉</button>
+    </div>
+  </div>
+</div>
 <div class="home-install" id="home-install" hidden>
   <p>請點底部分享，再選加入主畫面</p>
   <button type="button" class="invite-go" id="home-installed">我已加入</button>
 </div>
 <script src="./lissajous.js?v=2"></script>
 <script src="./gate.js?v=2"></script>
-<script src="./door.js?v=14"></script>
+<script src="./host.js?v=2"></script>
+<script src="./door.js?v=16"></script>
 </body>
 </html>
