@@ -296,7 +296,7 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
       #feda75 80%
     );
   background-size: 240% 240%, 320% 320%;
-  background-position: var(--foil-x, 50%) var(--foil-y, 50%), var(--foil-x, 40%) var(--foil-y, 60%);
+  background-position: 10% 40%, 80% 20%;
   mix-blend-mode: color-dodge;
   transform: rotateX(var(--foil-rx, 0deg)) rotateY(var(--foil-ry, 0deg));
   transform-style: preserve-3d;
@@ -315,12 +315,18 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
   mix-blend-mode: screen;
 }
 .cab-cover.is-holo .cab-foil {
-  opacity: 0.46;
+  opacity: 0.68;
+  animation: cab-foil 16s linear infinite;
+}
+@keyframes cab-foil {
+  from { background-position: 10% 40%, 80% 20%; }
+  to { background-position: 130% 70%, 70% 130%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cab-cover.is-holo .cab-foil {
+    animation: none;
     transform: none;
-    opacity: 0.28;
+    opacity: 0.52;
   }
 }
 .cab-mask {
@@ -663,10 +669,11 @@ html.is-select .tile {
   object-fit: cover;
   display: block;
   opacity: 0;
-  transition: opacity 0.28s ease;
+  transition: opacity 0.12s ease;
   pointer-events: none;
 }
 .tile img.is-on { opacity: 1; }
+.tile img.is-ready { transition: none; }
 .tile-shield {
   position: absolute;
   inset: 0;
@@ -1321,6 +1328,6 @@ button.tag-chip {
 }
 @media (prefers-reduced-motion: reduce) {
   .thinking-five span, .blobs span, .cab-cover.is-run .cab-ring,
-  .ins-icon.is-run .ins-ring, button.tag-apply::before,
+  .cab-cover.is-holo .cab-foil, .ins-icon.is-run .ins-ring, button.tag-apply::before,
   .tile.is-run .tile-ring, .hp.is-run .hp-fill { animation: none; }
 }

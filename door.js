@@ -40,12 +40,15 @@
   const FIRST = 12;
   const THUMB_CAP = 6;
   const THUMB_CACHE = "famibook-thumbs-v3";
+  const SHELF_STORE = "famibook.shelf.v1.";
   let thumbGen = 0;
   let thumbActive = 0;
   const thumbWait = [];
   const blobUrls = [];
   const memThumbs = {};
+  const shelfSnaps = {};
   let shelfGen = 0;
+  let prefetchOnce = false;
   let loadingMore = false;
   let total = 0;
   let catalog = {};
@@ -111,15 +114,10 @@
     if (!cover || !cover.classList.contains("is-holo")) return;
     const g = Math.max(-50, Math.min(50, foilOri.gamma));
     const b = Math.max(-50, Math.min(50, foilOri.beta - 45));
-    const x = 50 + g * 1.15 + foilMot.x * 10;
-    const y = 50 + b * 0.95 + foilMot.y * 10;
-    cover.style.setProperty("--foil-x", x.toFixed(1) + "%");
-    cover.style.setProperty("--foil-y", y.toFixed(1) + "%");
     cover.style.setProperty("--foil-hx", (50 + g * 1.4).toFixed(1) + "%");
     cover.style.setProperty("--foil-hy", (32 + b * 1.1).toFixed(1) + "%");
     cover.style.setProperty("--foil-rx", (-b * 0.28).toFixed(2) + "deg");
     cover.style.setProperty("--foil-ry", (g * 0.34).toFixed(2) + "deg");
-    cover.style.setProperty("--foil-a", (foilOri.alpha || 0).toFixed(1) + "deg");
   }
 
   function queueFoil() {
@@ -602,13 +600,16 @@
   function bindThumb(img, url, cacheKey, gen) {
     const mem = memThumbs[cacheKey];
     if (mem) {
+      img.classList.add("is-ready");
       showBlob(img, mem);
       return;
     }
     readCachedThumb(cacheKey).then(function (cached) {
-      if (gen !== thumbGen || !img.isConnected) return;
+      if (gen !== thumbGen) return;
       if (cached) {
         memThumbs[cacheKey] = cached;
+        if (!img.isConnected) return;
+        img.classList.add("is-ready");
         showBlob(img, cached);
         return;
       }
@@ -619,12 +620,12 @@
             return res.blob();
           })
           .then(function (blob) {
+            memThumbs[cacheKey] = blob;
+            writeCachedThumb(cacheKey, blob);
             if (gen !== thumbGen || !img.isConnected) {
               if (done) done();
               return;
             }
-            memThumbs[cacheKey] = blob;
-            writeCachedThumb(cacheKey, blob);
             showBlob(img, blob, done);
           })
           .catch(function () {
@@ -642,12 +643,36 @@
     });
   }
 
+  function warmupThumb(item) {
+    if (!item || !item.has_cover) return;
+    const cacheKey = thumbKey(item);
+    if (memThumbs[cacheKey]) return;
+    const url = thumbUrl(item);
+    function start(done) {
+      fetch(url, { mode: "cors", credentials: "omit" })
+        .then(function (res) {
+          if (!res.ok) throw new Error("bad");
+          return res.blob();
+        })
+        .then(function (blob) {
+          memThumbs[cacheKey] = blob;
+          writeCachedThumb(cacheKey, blob);
+          if (done) done();
+        })
+        .catch(function () {
+          if (done) done();
+        });
+    }
+    thumbWait.push(start);
+    pumpThumbs();
+  }
+
   function watchThumb(img, item, eager) {
     const url = thumbUrl(item);
     const cacheKey = thumbKey(item);
     img.dataset.thumbUrl = url;
     img.dataset.thumbKey = cacheKey;
-    if (eager || !window.IntersectionObserver) {
+    if (eager || memThumbs[cacheKey] || !window.IntersectionObserver) {
       if (img.dataset.thumbBound) return;
       img.dataset.thumbBound = "1";
       bindThumb(img, url, cacheKey, thumbGen);
@@ -682,6 +707,7 @@
     const img = document.createElement("img");
     img.alt = item.title || "";
     img.decoding = "async";
+    if (index < FIRST) img.loading = "eager";
     btn.appendChild(img);
     if (item.has_cover) watchThumb(img, item, index < FIRST);
     else if (item.kind === "org") {
@@ -774,6 +800,118 @@
     });
   }
 
+  function viewKey() {
+    return (hostOn() ? (hostTab || "all") : "list") + "|" + (cwd || "");
+  }
+
+  function feedBookTiles() {
+    return feed ? feed.querySelectorAll(".tile:not(.tile-add)") : [];
+  }
+
+  function itemStamp(it) {
+    if (!it) return "";
+    return String(it.id) + ":" + String(it.cover_rev || 0) + ":" + (it.favorite ? "1" : "0") + ":" + (it.pinned ? "1" : "0") + ":" + (it.kind || "");
+  }
+
+  function sameHead(fresh) {
+    const tiles = feedBookTiles();
+    if (!fresh || !fresh.length) return tiles.length === 0;
+    if (tiles.length < fresh.length) return false;
+    for (let i = 0; i < fresh.length; i += 1) {
+      const id = tiles[i].dataset.id;
+      if (itemStamp(catalog[id]) !== itemStamp(fresh[i])) return false;
+    }
+    return true;
+  }
+
+  function paintedItems() {
+    return Array.prototype.map.call(feedBookTiles(), function (el) {
+      return catalog[el.dataset.id];
+    }).filter(Boolean);
+  }
+
+  function readJsonSnap(k) {
+    if (shelfSnaps[k] && shelfSnaps[k].items && shelfSnaps[k].items.length) {
+      return shelfSnaps[k];
+    }
+    try {
+      const raw = localStorage.getItem(SHELF_STORE + k);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (parsed && parsed.items && parsed.items.length) {
+        shelfSnaps[k] = parsed;
+        return parsed;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function writeJsonSnap(k, data) {
+    const snap = {
+      items: (data.items || []).slice(),
+      total: data.total || 0,
+      parent: data.parent || "",
+      cwd: data.cwd || "",
+      offset: data.offset || (data.items || []).length,
+    };
+    shelfSnaps[k] = snap;
+    try {
+      localStorage.setItem(SHELF_STORE + k, JSON.stringify({
+        items: snap.items.slice(0, 80),
+        total: snap.total,
+        parent: snap.parent,
+        cwd: snap.cwd,
+        offset: snap.offset,
+      }));
+    } catch (e) {}
+  }
+
+  function rememberSnap() {
+    writeJsonSnap(viewKey(), {
+      items: paintedItems(),
+      total: total,
+      parent: parentCwd,
+      cwd: cwd,
+      offset: offset,
+    });
+  }
+
+  function paintFromCache(k) {
+    const snap = readJsonSnap(k);
+    if (!snap || !snap.items || !snap.items.length) return false;
+    resetFeed();
+    snap.items.forEach(function (it, i) {
+      feed.appendChild(tileEl(it, i));
+    });
+    offset = snap.items.length;
+    total = snap.total || offset;
+    if (snap.parent != null) parentCwd = snap.parent;
+    paintProgress();
+    paintBack();
+    layoutStage();
+    if (hostOn() && window.FamiHost && window.FamiHost.afterPaint) window.FamiHost.afterPaint();
+    return true;
+  }
+
+  function prefetchOtherTabs() {
+    if (!hostOn() || cwd || prefetchOnce) return;
+    prefetchOnce = true;
+    ["all", "research", "title", "manga"].forEach(function (tab) {
+      if (tab === hostTab) return;
+      const path = "/api/host/shelf?offset=0&limit=" + LIMIT + "&tab=" + encodeURIComponent(tab);
+      window.FamiGate.api(path, key, { timeout: 20000 }).then(function (x) {
+        if (!x || !x.j || !x.j.items) return;
+        writeJsonSnap(tab + "|", {
+          items: x.j.items,
+          total: x.j.total || 0,
+          parent: x.j.parent || "",
+          cwd: "",
+          offset: (x.j.items || []).length,
+        });
+        (x.j.items || []).slice(0, FIRST).forEach(warmupThumb);
+      }).catch(function () {});
+    });
+  }
+
   function resetFeed() {
     offset = 0;
     if (feed) feed.innerHTML = "";
@@ -787,12 +925,13 @@
     if (busy && !reset) return;
     const gen = ++shelfGen;
     if (reset && window.FamiHost && window.FamiHost.clearSelect) window.FamiHost.clearSelect();
+    if (reset) paintFromCache(viewKey()) || resetFeed();
     if (hostOn() && hostTab === "jobs") {
       loadingMore = false;
       total = 1;
-      offset = 1;
+      offset = Math.max(1, feedBookTiles().length);
       if (window.FamiHost && window.FamiHost.loadJobs) {
-        return window.FamiHost.loadJobs(!!reset);
+        return window.FamiHost.loadJobs(!feedBookTiles().length);
       }
       return;
     }
@@ -807,18 +946,31 @@
       const x = await window.FamiGate.api(path, key, { timeout: 20000 });
       if (gen !== shelfGen) return;
       if (!x.res.ok || !x.j) return;
-      if (reset) resetFeed();
+      const fresh = x.j.items || [];
       lastShelf = x.j;
       total = x.j.total || 0;
       parentCwd = x.j.parent || "";
       cwd = x.j.cwd || cwd;
+      if (reset && sameHead(fresh)) {
+        fresh.forEach(function (it) { catalog[it.id] = it; });
+        if (offset < fresh.length) offset = fresh.length;
+        paintProgress();
+        paintBack();
+        rememberSnap();
+        layoutStage();
+        window.setTimeout(prefetchOtherTabs, 700);
+        return;
+      }
+      if (reset) resetFeed();
       paintBack();
       const start = offset;
-      (x.j.items || []).forEach((it, i) => feed.appendChild(tileEl(it, start + i)));
-      offset += (x.j.items || []).length;
+      fresh.forEach(function (it, i) { feed.appendChild(tileEl(it, start + i)); });
+      offset += fresh.length;
       paintProgress();
+      rememberSnap();
       if (hostOn() && window.FamiHost && window.FamiHost.afterPaint) window.FamiHost.afterPaint();
       layoutStage();
+      if (reset) window.setTimeout(prefetchOtherTabs, 700);
     } finally {
       if (gen === shelfGen) loadingMore = false;
     }
@@ -1011,6 +1163,7 @@
     catalog: () => catalog,
     hostOn: hostOn,
     resetFeed: resetFeed,
+    remember: rememberSnap,
     appendTile: function (item, index) {
       if (!feed) return null;
       const el = tileEl(item, index || 0);

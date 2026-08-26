@@ -890,8 +890,32 @@
       if (window.FamiShelf && window.FamiShelf.tab && window.FamiShelf.tab() !== "jobs") return;
       if (window.FamiShelf && window.FamiShelf.hostOn && !window.FamiShelf.hostOn()) return;
       paintJobsHud(x.j, false);
-      if (reset && window.FamiShelf && window.FamiShelf.resetFeed) window.FamiShelf.resetFeed();
       const rows = x.j.active || [];
+      if (!reset) {
+        const tiles = tilesExceptPlus();
+        const map = {};
+        rows.forEach(function (row) { map["job:" + row.id] = row; });
+        let same = tiles.length === rows.length;
+        if (same) {
+          tiles.forEach(function (el) {
+            if (!map[el.dataset.id]) same = false;
+          });
+        }
+        if (same) {
+          tiles.forEach(function (el) {
+            const row = map[el.dataset.id];
+            if (!row) return;
+            const item = jobFromRow(row);
+            catalog()[item.id] = item;
+            decorateJob(el, item);
+          });
+          paintPlus();
+          paintPicks();
+          if (window.FamiShelf && window.FamiShelf.remember) window.FamiShelf.remember();
+          return;
+        }
+      }
+      if (window.FamiShelf && window.FamiShelf.resetFeed) window.FamiShelf.resetFeed();
       rows.forEach(function (row, i) {
         const item = jobFromRow(row);
         if (window.FamiShelf && window.FamiShelf.appendTile) {
@@ -901,6 +925,7 @@
       });
       paintPlus();
       paintPicks();
+      if (window.FamiShelf && window.FamiShelf.remember) window.FamiShelf.remember();
     }).finally(function () {
       jobsBusy = false;
     });
