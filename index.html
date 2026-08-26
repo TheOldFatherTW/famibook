@@ -22,7 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./app.css?v=20"/>
+<link rel="stylesheet" href="./app.css?v=22"/>
 <script src="./config.js?v=1787662694"></script>
 <script>
 (function () {
@@ -71,6 +71,7 @@
 <body>
 <div class="blobs" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
 <div class="hall with-feed is-booting" id="hall">
+  <div class="stage-bg" id="stage-bg" hidden></div>
   <div class="profile">
     <div class="lissajous" id="lissajous"></div>
     <h1 class="brand">FamiBook</h1>
@@ -99,7 +100,7 @@
     <div class="cab-wrap">
       <div class="cab-cover">
         <div class="cab-ring" aria-hidden="true"></div>
-        <div class="cab-face"><img id="face-img" alt="" hidden/></div>
+        <div class="cab-face"><img id="face-img" alt="" hidden/><span class="cab-foil" aria-hidden="true"></span></div>
         <div class="cab-mask" aria-hidden="true"></div>
       </div>
       <div id="album-settings" class="album-settings" hidden></div>
@@ -108,7 +109,6 @@
   </div>
   <div class="tag-board" id="tag-board" hidden>
     <div class="mode-bar" id="mode-bar" hidden></div>
-    <div class="tag-row" id="job-stops" hidden></div>
     <button type="button" class="ins-icon nav-back" id="shelf-back" hidden aria-label="返回書櫃">
       <span class="ins-ring"></span>
       <span class="ins-face">
@@ -120,6 +120,7 @@
 </div>
 <aside class="photo-rail" id="photo-rail" hidden aria-label="書櫃操作"></aside>
 <input id="cover-input" type="file" accept="image/*" hidden/>
+<input id="backdrop-input" type="file" accept="image/*" hidden/>
 <div class="batch-tag-mask list-tag-mask" id="findMask" hidden>
   <div class="list-tag-sheet" id="findSheet">
     <div class="batch-tag-head">
@@ -153,7 +154,7 @@
 </div>
 <script src="./lissajous.js?v=2"></script>
 <script src="./gate.js?v=2"></script>
-<script src="./host.js?v=2"></script>
-<script src="./door.js?v=16"></script>
+<script src="./host.js?v=4"></script>
+<script src="./door.js?v=18"></script>
 </body>
 </html>

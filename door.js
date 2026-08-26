@@ -16,6 +16,8 @@
   const faceImg = document.getElementById("face-img");
   const readerName = document.getElementById("reader-name");
   const coverInput = document.getElementById("cover-input");
+  const backdropInput = document.getElementById("backdrop-input");
+  const stageBg = document.getElementById("stage-bg");
   const shelfBack = document.getElementById("shelf-back");
   let settingsWrap = null;
   let settingsCatch = null;
@@ -23,6 +25,10 @@
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 3.8l.6-1.3h3.6l.6 1.3 1.6.7 1.4-.5 2.5 2.5-.5 1.4.7 1.6 1.3.6v3.6l-1.3.6-.7 1.6.5 1.4-2.5 2.5-1.4-.5-1.6.7-.6 1.3h-3.6l-.6-1.3-1.6-.7-1.4.5-2.5-2.5.5-1.4-.7-1.6-1.3-.6v-3.6l1.3-.6.7-1.6-.5-1.4L6.6 4l1.4.5 1.6-.7z" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/><circle cx="12" cy="11.9" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
   const CAMERA =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="8" width="17" height="11.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 8l1.4-2.4h5.2L16 8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13.6" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>';
+  const SCENE =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 16.2l4.2-4.6 3 3.2 2.2-2.4 3.6 3.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="9" cy="9.2" r="1.3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+  const PERSON =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.4" r="3.1" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M6.2 18.6c.9-3.3 3.2-5 5.8-5s4.9 1.7 5.8 5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
 
   let key = "";
   let busy = false;
@@ -33,16 +39,22 @@
   const LIMIT = 40;
   const FIRST = 12;
   const THUMB_CAP = 6;
-  const THUMB_CACHE = "famibook-thumbs-v2";
+  const THUMB_CACHE = "famibook-thumbs-v3";
   let thumbGen = 0;
   let thumbActive = 0;
   const thumbWait = [];
   const blobUrls = [];
+  const memThumbs = {};
+  let shelfGen = 0;
   let loadingMore = false;
   let total = 0;
   let catalog = {};
   let isGm = false;
+  let hostView = true;
   let hostTab = "all";
+  try {
+    if (localStorage.getItem("famibook.hostView") === "0") hostView = false;
+  } catch (e) {}
   const MODES = [
     ["all", "所有"],
     ["research", "研究"],
@@ -65,6 +77,48 @@
   function setCabRun(on) {
     const cover = document.querySelector("#cab-hud .cab-cover");
     if (cover) cover.classList.toggle("is-run", !!on);
+  }
+
+  function hostOn() {
+    return !!(isGm && hostView);
+  }
+
+  function paintHostChrome() {
+    const cover = document.querySelector("#cab-hud .cab-cover");
+    if (cover) cover.classList.toggle("is-holo", hostOn());
+    const idRow = document.querySelector('.settings-entry[data-job="identity"]');
+    if (idRow) {
+      idRow.hidden = !isGm;
+      idRow.classList.toggle("is-host", hostOn());
+    }
+    const sw = document.querySelector("#mode-bar .select-sw");
+    if (sw) sw.hidden = !hostOn();
+  }
+
+  function layoutStage() {
+    if (!stageBg || !hall || stageBg.hidden) return;
+    const hallBox = hall.getBoundingClientRect();
+    const tags = document.getElementById("tag-board");
+    const startBox = tags && !tags.hidden ? tags.getBoundingClientRect() : (feed ? feed.getBoundingClientRect() : null);
+    const endBox = feed ? feed.getBoundingClientRect() : startBox;
+    const start = startBox ? Math.max(0, startBox.top - hallBox.top) : 180;
+    const end = endBox ? Math.max(start + 24, endBox.top - hallBox.top) : start + 80;
+    const fade = "linear-gradient(to bottom, #000 0, #000 " + Math.round(start) + "px, transparent " + Math.round(end) + "px)";
+    stageBg.style.height = Math.round(end) + "px";
+    stageBg.style.webkitMaskImage = fade;
+    stageBg.style.maskImage = fade;
+  }
+
+  function paintStage(reader) {
+    if (!stageBg) return;
+    if (reader && reader.has_backdrop && reader.id) {
+      stageBg.style.backgroundImage = "url(" + window.FamiGate.origin() + "/backdrop?person=" + encodeURIComponent(reader.id) + "&k=" + encodeURIComponent(key) + "&r=" + (reader.backdrop_rev || 0) + ")";
+      stageBg.hidden = false;
+      requestAnimationFrame(layoutStage);
+    } else {
+      stageBg.hidden = true;
+      stageBg.style.backgroundImage = "";
+    }
   }
 
   function insButton(className, svg, label) {
@@ -212,21 +266,40 @@
     menu.addEventListener("pointerdown", function (ev) {
       ev.stopPropagation();
     });
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "settings-entry";
-    btn.setAttribute("role", "menuitem");
-    btn.dataset.job = "cover";
-    btn.appendChild(jobBadge(CAMERA));
-    const text = document.createElement("span");
-    text.textContent = "更換頭像";
-    btn.appendChild(text);
-    btn.addEventListener("click", function () {
-      if (btn.classList.contains("is-run") || btn.disabled) return;
-      closeSettings();
+    function gearRow(svg, label, job, onClick) {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "settings-entry";
+      row.setAttribute("role", "menuitem");
+      row.dataset.job = job;
+      row.appendChild(jobBadge(svg));
+      const text = document.createElement("span");
+      text.textContent = label;
+      row.appendChild(text);
+      row.addEventListener("click", function () {
+        if (row.classList.contains("is-run") || row.disabled) return;
+        closeSettings();
+        onClick();
+      });
+      return row;
+    }
+    menu.appendChild(gearRow(CAMERA, "更換頭像", "cover", function () {
       if (coverInput) coverInput.click();
+    }));
+    menu.appendChild(gearRow(SCENE, "更換背景", "backdrop", function () {
+      if (backdropInput) backdropInput.click();
+    }));
+    const idRow = gearRow(PERSON, "切換身分", "identity", function () {
+      if (!isGm) return;
+      hostView = !hostView;
+      try { localStorage.setItem("famibook.hostView", hostView ? "1" : "0"); } catch (e) {}
+      if (!hostOn() && window.FamiHost && window.FamiHost.clearSelect) window.FamiHost.clearSelect();
+      paintHostChrome();
+      paintBack();
+      loadShelf(true);
     });
-    menu.appendChild(btn);
+    idRow.hidden = true;
+    menu.appendChild(idRow);
     toggle.addEventListener("click", function (ev) {
       ev.preventDefault();
       ev.stopPropagation();
@@ -293,6 +366,8 @@
     const host = cabHud.querySelector(".cab-wrap");
     if (host && settings.parentNode !== host) host.appendChild(settings);
     settings.hidden = false;
+    paintStage(reader);
+    paintHostChrome();
   }
 
   function paintProgress() {
@@ -354,6 +429,10 @@
     return base + "/famibook-t/" + encodeURIComponent(item.id) + "/" + (item.cover_rev || 0);
   }
 
+  function thumbsBusy() {
+    return thumbActive > 0 || thumbWait.length > 0;
+  }
+
   function resetThumbs() {
     thumbGen += 1;
     if (window.thumbObserver) {
@@ -413,9 +492,15 @@
   }
 
   function bindThumb(img, url, cacheKey, gen) {
+    const mem = memThumbs[cacheKey];
+    if (mem) {
+      showBlob(img, mem);
+      return;
+    }
     readCachedThumb(cacheKey).then(function (cached) {
       if (gen !== thumbGen || !img.isConnected) return;
       if (cached) {
+        memThumbs[cacheKey] = cached;
         showBlob(img, cached);
         return;
       }
@@ -430,6 +515,7 @@
               if (done) done();
               return;
             }
+            memThumbs[cacheKey] = blob;
             writeCachedThumb(cacheKey, blob);
             showBlob(img, blob, done);
           })
@@ -454,6 +540,8 @@
     img.dataset.thumbUrl = url;
     img.dataset.thumbKey = cacheKey;
     if (eager || !window.IntersectionObserver) {
+      if (img.dataset.thumbBound) return;
+      img.dataset.thumbBound = "1";
       bindThumb(img, url, cacheKey, thumbGen);
       return;
     }
@@ -519,7 +607,7 @@
       pct.hidden = true;
     }
     btn.appendChild(pct);
-    if (window.FamiHost && window.FamiHost.bindTile && isGm) {
+    if (window.FamiHost && window.FamiHost.bindTile && hostOn()) {
       window.FamiHost.bindTile(btn, item);
     }
     btn.addEventListener("click", function (ev) {
@@ -539,15 +627,19 @@
   function paintBack() {
     const inFolder = !!cwd;
     const modeBar = document.getElementById("mode-bar");
-    if (isGm) {
+    if (hostOn()) {
       if (tagBoard) tagBoard.hidden = false;
       if (modeBar) modeBar.hidden = false;
       if (shelfBack) shelfBack.hidden = !inFolder;
+      paintHostChrome();
+      layoutStage();
       return;
     }
     if (tagBoard) tagBoard.hidden = !inFolder;
     if (modeBar) modeBar.hidden = true;
     if (shelfBack) shelfBack.hidden = !inFolder;
+    paintHostChrome();
+    layoutStage();
   }
 
   function ensureModes() {
@@ -576,8 +668,8 @@
 
   function resetFeed() {
     offset = 0;
-    resetThumbs();
     if (feed) feed.innerHTML = "";
+    resetThumbs();
     catalog = {};
     paintBack();
   }
@@ -585,28 +677,29 @@
   async function loadShelf(reset) {
     if (!feed) return;
     if (busy && !reset) return;
-    if (reset) {
-      resetFeed();
-      if (window.FamiHost && window.FamiHost.clearSelect) window.FamiHost.clearSelect();
-    }
-    if (isGm && hostTab === "jobs") {
+    const gen = ++shelfGen;
+    if (reset && window.FamiHost && window.FamiHost.clearSelect) window.FamiHost.clearSelect();
+    if (hostOn() && hostTab === "jobs") {
       loadingMore = false;
       total = 1;
       offset = 1;
       if (window.FamiHost && window.FamiHost.loadJobs) {
-        return window.FamiHost.loadJobs(false);
+        return window.FamiHost.loadJobs(!!reset);
       }
       return;
     }
     loadingMore = true;
+    const reqOffset = reset ? 0 : offset;
     const folder = cwd ? "&cwd=" + encodeURIComponent(cwd) : "";
-    const tab = isGm ? "&tab=" + encodeURIComponent(hostTab || "all") : "";
-    const path = isGm
-      ? "/api/host/shelf?offset=" + offset + "&limit=" + LIMIT + folder + tab
-      : "/api/shelf?view=list&offset=" + offset + "&limit=" + LIMIT + folder;
+    const tab = hostOn() ? "&tab=" + encodeURIComponent(hostTab || "all") : "";
+    const path = hostOn()
+      ? "/api/host/shelf?offset=" + reqOffset + "&limit=" + LIMIT + folder + tab
+      : "/api/shelf?view=list&offset=" + reqOffset + "&limit=" + LIMIT + folder;
     try {
       const x = await window.FamiGate.api(path, key, { timeout: 20000 });
+      if (gen !== shelfGen) return;
       if (!x.res.ok || !x.j) return;
+      if (reset) resetFeed();
       lastShelf = x.j;
       total = x.j.total || 0;
       parentCwd = x.j.parent || "";
@@ -616,18 +709,22 @@
       (x.j.items || []).forEach((it, i) => feed.appendChild(tileEl(it, start + i)));
       offset += (x.j.items || []).length;
       paintProgress();
-      if (isGm && window.FamiHost && window.FamiHost.afterPaint) window.FamiHost.afterPaint();
+      if (hostOn() && window.FamiHost && window.FamiHost.afterPaint) window.FamiHost.afterPaint();
+      layoutStage();
     } finally {
-      loadingMore = false;
+      if (gen === shelfGen) loadingMore = false;
     }
   }
 
   window.addEventListener("scroll", () => {
     if (loadingMore || offset >= total) return;
+    if (thumbsBusy()) return;
     if (window.innerHeight + window.scrollY > document.body.offsetHeight - 600) {
       loadShelf(false);
     }
   });
+  window.addEventListener("resize", layoutStage);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", layoutStage);
 
   async function boot() {
     window.FamiGate.blockWebChrome();
@@ -672,6 +769,7 @@
       isGm = !!(x.j.gm || (x.j.reader && x.j.reader.gm));
       renderMe(x.j.reader);
       if (isGm) ensureModes();
+      paintHostChrome();
       if (isGm && window.FamiHost) window.FamiHost.attach(key);
       setBoot(false, "");
       if (statusEl) statusEl.textContent = "";
@@ -770,6 +868,25 @@
     }
   });
 
+  if (backdropInput) backdropInput.addEventListener("change", async () => {
+    const file = backdropInput.files && backdropInput.files[0];
+    if (!file) return;
+    const entry = document.querySelector('.settings-entry[data-job="backdrop"]');
+    setJobRun(entry, true);
+    setCabRun(true);
+    try {
+      const fd = new FormData();
+      fd.append("backdrop", file);
+      await fetch(window.FamiGate.origin() + "/api/backdrop?k=" + encodeURIComponent(key), { method: "POST", body: fd });
+      const door = await window.FamiGate.api("/api/door", key, { timeout: 15000 });
+      if (door.j && door.j.reader) renderMe(door.j.reader);
+    } finally {
+      setJobRun(entry, false);
+      setCabRun(false);
+      backdropInput.value = "";
+    }
+  });
+
   if (shelfBack) shelfBack.addEventListener("click", function (ev) {
     ev.preventDefault();
     cwd = parentCwd || "";
@@ -784,6 +901,7 @@
     cwd: () => cwd,
     tab: () => hostTab,
     catalog: () => catalog,
+    hostOn: hostOn,
     resetFeed: resetFeed,
     appendTile: function (item, index) {
       if (!feed) return null;

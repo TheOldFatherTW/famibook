@@ -38,6 +38,10 @@
   let orgSnap = { folders: [], favorites: [] };
   let dragged = false;
   let drag = null;
+  let selectArmed = false;
+  let noteTimer = 0;
+  let lastPtr = { x: 0, y: 0, id: 0 };
+  let jobsBusy = false;
 
   function api(path, opts) {
     return window.FamiGate.api(path, key, Object.assign({ timeout: 20000 }, opts || {}));
@@ -163,8 +167,68 @@
       const heart = rail.querySelector(".rail-heart");
       const folder = rail.querySelector(".rail-folder");
       if (heart) heart.hidden = isJobs();
-      if (folder) folder.hidden = isJobs();
+      if (folder) {
+        folder.hidden = isJobs();
+        folder.classList.toggle("is-off", !folderOk());
+      }
     }
+  }
+
+  function folderOk() {
+    const items = pickedItems();
+    const folders = items.filter(function (it) { return it && it.kind === "org"; });
+    const books = items.filter(function (it) { return it && it.kind !== "job" && it.kind !== "org"; });
+    if (folders.length >= 2 && !books.length) return false;
+    return books.length > 0 || folders.length === 1;
+  }
+
+  function flashNote(text) {
+    const mask = document.getElementById("askMask");
+    const p = document.getElementById("askText");
+    const actions = mask && mask.querySelector(".ask-actions");
+    if (!mask || !p) return;
+    askFn = null;
+    p.textContent = text;
+    if (actions) actions.hidden = true;
+    mask.classList.add("is-note");
+    mask.classList.remove("is-out");
+    mask.hidden = false;
+    if (noteTimer) window.clearTimeout(noteTimer);
+    noteTimer = window.setTimeout(function () {
+      mask.classList.add("is-out");
+      noteTimer = window.setTimeout(function () {
+        if (!mask.classList.contains("is-note")) return;
+        mask.hidden = true;
+        mask.classList.remove("is-note", "is-out");
+        if (actions) actions.hidden = false;
+        noteTimer = 0;
+      }, 280);
+    }, 1600);
+  }
+
+  function ensureSelectSwitch() {
+    const bar = document.getElementById("mode-bar");
+    if (!bar || bar.querySelector(".select-sw")) return;
+    const label = document.createElement("label");
+    label.className = "ask-skip select-sw";
+    const name = document.createElement("span");
+    name.textContent = "多選";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.setAttribute("role", "switch");
+    input.id = "select-sw";
+    const sw = document.createElement("span");
+    sw.className = "ask-sw";
+    label.appendChild(name);
+    label.appendChild(input);
+    label.appendChild(sw);
+    input.addEventListener("change", function () {
+      selectArmed = !!input.checked;
+      selectMode = selectArmed;
+      if (!selectArmed) selected = new Set();
+      paintPicks();
+    });
+    bar.appendChild(label);
   }
 
   function ensureRail() {
@@ -181,6 +245,10 @@
     folder.addEventListener("click", function (ev) {
       ev.preventDefault();
       ev.stopPropagation();
+      if (!folderOk()) {
+        flashNote("資料夾間無法合併");
+        return;
+      }
       openFolderSheet();
     });
     const heart = insButton("rail-heart", HEART, "愛心");
@@ -256,8 +324,17 @@
     askFn = fn;
     const mask = document.getElementById("askMask");
     const p = document.getElementById("askText");
+    const actions = mask && mask.querySelector(".ask-actions");
+    if (noteTimer) {
+      window.clearTimeout(noteTimer);
+      noteTimer = 0;
+    }
     if (p) p.textContent = text;
-    if (mask) mask.hidden = false;
+    if (actions) actions.hidden = false;
+    if (mask) {
+      mask.classList.remove("is-note", "is-out");
+      mask.hidden = false;
+    }
   }
 
   function closeAsk() {
@@ -314,6 +391,7 @@
   }
 
   function enterSelect(id) {
+    if (!selectArmed) return;
     selectMode = true;
     if (id) selected.add(id);
     paintPicks();
@@ -322,14 +400,13 @@
   function togglePick(id) {
     if (selected.has(id)) selected.delete(id);
     else selected.add(id);
-    if (!selected.size) selectMode = false;
-    else selectMode = true;
+    selectMode = selectArmed || selected.size > 0;
     paintPicks();
   }
 
   function clearSelect() {
     selected = new Set();
-    selectMode = false;
+    if (!selectArmed) selectMode = false;
     paintPicks();
   }
 
@@ -425,6 +502,10 @@
     const books = pickedItems().filter(function (it) { return it.kind !== "job" && it.kind !== "org"; });
     const folders = pickedItems().filter(function (it) { return it.kind === "org"; });
     if (!books.length && !folders.length) return;
+    if (folders.length >= 2 && !books.length) {
+      flashNote("資料夾間無法合併");
+      return;
+    }
     if (!books.length && folders.length) {
       startForm("rename_org", folders[0]);
       return;
@@ -492,13 +573,6 @@
     }).then(function (x) {
       pollJobs();
       return x;
-    });
-  }
-
-  function queueCtrl(queue, stop) {
-    return post("/api/host/jobs", { op: stop ? "stop" : "resume", queue: queue }).then(function () {
-      pollJobs();
-      if (isJobs()) loadJobs(true);
     });
   }
 
@@ -694,91 +768,167 @@
     });
   }
 
-  function paintJobsHud(snap) {
+  function paintJobsHud(snap, reconcile) {
     const cover = document.querySelector("#cab-hud .cab-cover");
     const current = snap && snap.current;
     const queued = (snap && snap.queued) || [];
     const working = !!(current || queued.length);
     if (cover) cover.classList.toggle("is-run", working);
-    paintJobStops(snap);
-  }
-
-  function paintJobStops(snap) {
     const row = document.getElementById("job-stops");
-    if (!row) return;
-    if (!isJobs()) {
+    if (row) {
       row.hidden = true;
       row.innerHTML = "";
-      return;
     }
-    row.hidden = false;
-    row.innerHTML = "";
-    [
-      ["capture", "擷取", snap && snap.stop_capture],
-      ["research", "研究", snap && snap.stop_research],
-      ["steam", "遊戲", snap && snap.stop_steam],
-    ].forEach(function (pair) {
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className = "tag-chip" + (pair[2] ? " is-on" : "");
-      chip.textContent = pair[2] ? "繼續" + pair[1] : "暫停" + pair[1];
-      chip.addEventListener("click", function () { queueCtrl(pair[0], !pair[2]); });
-      row.appendChild(chip);
-    });
+    if (reconcile && isJobs()) syncJobTiles(snap);
   }
 
   function pollJobs() {
     if (!attached || !key) return;
     api("/api/host/jobs", { timeout: 8000 }).then(function (x) {
-      if (x.res.ok && x.j) paintJobsHud(x.j);
+      if (x.res.ok && x.j) paintJobsHud(x.j, true);
     }).catch(function () {});
   }
 
   function jobStateLabel(item) {
     if (!item) return "";
-    if (item.state === "running") return "進行中";
-    if (item.state === "paused") return "暫停";
-    if (item.state === "held") return "等候切換日";
-    const kind = JOB_LABEL[item.job_kind] || "等候";
-    return kind;
+    if (item.state === "running") return JOB_LABEL[item.job_kind] || "進行中";
+    if (item.state === "paused") return "已暫停";
+    return "尚未開始";
+  }
+
+  function jobFromRow(row) {
+    return {
+      id: "job:" + row.id,
+      job_id: row.id,
+      book: row.book,
+      cover_book: row.book,
+      title: row.title || JOB_LABEL[row.kind] || "工作",
+      kind: "job",
+      job_kind: row.kind,
+      state: row.state,
+      percent: row.percent,
+      has_cover: !!row.book,
+      has_pages: false,
+      pinned: row.state === "running",
+      favorite: false,
+    };
+  }
+
+  function decorateJob(el, item) {
+    if (!el || !item || item.kind !== "job") return;
+    el.classList.add("is-job");
+    el.classList.toggle("is-run", item.state === "running");
+    el.classList.toggle("is-pinned", item.state === "running");
+    const badge = el.querySelector(".tile-pct");
+    if (badge) badge.hidden = true;
+    let ring = el.querySelector(".tile-ring");
+    if (!ring) {
+      ring = document.createElement("span");
+      ring.className = "tile-ring";
+      el.appendChild(ring);
+    }
+    let hud = el.querySelector(".tile-job-hud");
+    if (!hud) {
+      hud = document.createElement("div");
+      hud.className = "tile-job-hud hp";
+      hud.innerHTML =
+        '<div class="hp-label">' +
+        '<span class="hp-text"></span>' +
+        '<span class="hp-alt"><span class="hp-alt-pct"></span></span>' +
+        '<div class="thinking-five hp-think" aria-hidden="true" hidden>' +
+        "<span></span><span></span><span></span><span></span><span></span></div></div>" +
+        '<div class="hp-meter" hidden><div class="hp-track"><div class="hp-fill"></div></div></div>';
+      el.appendChild(hud);
+    }
+    const running = item.state === "running";
+    const paused = item.state === "paused";
+    const pct = Math.max(0, Math.min(100, Number(item.percent) || 0));
+    const showBar = running || (paused && pct > 0);
+    hud.classList.toggle("is-run", running);
+    const text = hud.querySelector(".hp-text");
+    const think = hud.querySelector(".thinking-five");
+    const meter = hud.querySelector(".hp-meter");
+    const fill = hud.querySelector(".hp-fill");
+    const alt = hud.querySelector(".hp-alt");
+    const altPct = hud.querySelector(".hp-alt-pct");
+    if (text) text.textContent = jobStateLabel(item);
+    if (think) think.hidden = !running;
+    if (meter) meter.hidden = !showBar;
+    if (fill) fill.style.width = pct + "%";
+    if (alt) alt.hidden = !showBar;
+    if (altPct) altPct.textContent = pct + "%";
+    let ctrl = el.querySelector(".job-ctrl");
+    const svg = running ? PAUSE : PLAY;
+    const label = running ? "暫停" : "開始";
+    if (!ctrl) {
+      ctrl = insButton("job-ctrl", svg, label);
+      ctrl.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const id = item.job_id || String(el.dataset.id || "").replace(/^job:/, "");
+        const op = el.classList.contains("is-run") ? "pause" : "play";
+        post("/api/host/jobs", { op: op, id: id }).then(function () {
+          if (isJobs()) loadJobs(true);
+          else pollJobs();
+        });
+      });
+      el.appendChild(ctrl);
+    } else {
+      const face = ctrl.querySelector(".ins-face");
+      if (face) face.innerHTML = svg;
+      ctrl.setAttribute("aria-label", label);
+      ctrl.title = label;
+    }
+  }
+
+  function syncJobTiles(snap) {
+    if (drag || jobsBusy) return;
+    const rows = (snap && snap.active) || [];
+    const tiles = tilesExceptPlus();
+    if (tiles.length !== rows.length) {
+      loadJobs(true);
+      return;
+    }
+    const map = {};
+    rows.forEach(function (row) { map["job:" + row.id] = row; });
+    for (let i = 0; i < tiles.length; i += 1) {
+      if (!map[tiles[i].dataset.id]) {
+        loadJobs(true);
+        return;
+      }
+    }
+    tiles.forEach(function (el) {
+      const row = map[el.dataset.id];
+      if (!row) return;
+      const item = jobFromRow(row);
+      catalog()[item.id] = item;
+      decorateJob(el, item);
+    });
   }
 
   function loadJobs(reset) {
     const feed = document.getElementById("feed");
     if (!feed) return Promise.resolve();
+    if (jobsBusy) return Promise.resolve();
+    jobsBusy = true;
     return api("/api/host/jobs", { timeout: 12000 }).then(function (x) {
       if (!x.res.ok || !x.j) return;
-      paintJobsHud(x.j);
+      if (window.FamiShelf && window.FamiShelf.tab && window.FamiShelf.tab() !== "jobs") return;
+      if (window.FamiShelf && window.FamiShelf.hostOn && !window.FamiShelf.hostOn()) return;
+      paintJobsHud(x.j, false);
       if (reset && window.FamiShelf && window.FamiShelf.resetFeed) window.FamiShelf.resetFeed();
       const rows = x.j.active || [];
       rows.forEach(function (row, i) {
-        const item = {
-          id: "job:" + row.id,
-          job_id: row.id,
-          book: row.book,
-          cover_book: row.book,
-          title: row.title || JOB_LABEL[row.kind] || "工作",
-          kind: "job",
-          job_kind: row.kind,
-          state: row.state,
-          percent: row.percent,
-          has_cover: !!row.book,
-          has_pages: false,
-          pinned: row.state === "running",
-          favorite: false,
-        };
+        const item = jobFromRow(row);
         if (window.FamiShelf && window.FamiShelf.appendTile) {
           const el = window.FamiShelf.appendTile(item, i);
-          if (el && item.pinned) el.classList.add("is-pinned");
-          const pct = el && el.querySelector(".tile-pct");
-          if (pct) {
-            pct.hidden = false;
-            pct.textContent = jobStateLabel(item);
-          }
+          decorateJob(el, item);
         }
       });
       paintPlus();
       paintPicks();
+    }).finally(function () {
+      jobsBusy = false;
     });
   }
 
@@ -787,6 +937,7 @@
     if (!feed) return;
     const old = feed.querySelector(".tile-add");
     if (old) old.remove();
+    if (window.FamiShelf && window.FamiShelf.hostOn && !window.FamiShelf.hostOn()) return;
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "tile tile-add";
@@ -813,13 +964,10 @@
     paintPlus();
     paintPicks();
     refreshOrg();
-    if (isJobs()) paintJobStops();
-    else {
-      const row = document.getElementById("job-stops");
-      if (row) {
-        row.hidden = true;
-        row.innerHTML = "";
-      }
+    const row = document.getElementById("job-stops");
+    if (row) {
+      row.hidden = true;
+      row.innerHTML = "";
     }
   }
 
@@ -829,7 +977,6 @@
     let sx = 0;
     let sy = 0;
     let fromHold = false;
-    let startDrag = false;
     function clearPress() {
       if (press) {
         window.clearTimeout(press);
@@ -837,37 +984,38 @@
       }
     }
     btn.addEventListener("pointerdown", function (ev) {
+      if (window.FamiShelf && window.FamiShelf.hostOn && !window.FamiShelf.hostOn()) return;
       if (ev.button && ev.button !== 0) return;
+      if (ev.target && ev.target.closest && ev.target.closest(".job-ctrl")) return;
       sx = ev.clientX;
       sy = ev.clientY;
+      lastPtr = { x: ev.clientX, y: ev.clientY, id: ev.pointerId };
       fromHold = false;
-      startDrag = false;
       dragged = false;
       clearPress();
       press = window.setTimeout(function () {
         press = 0;
         fromHold = true;
-        enterSelect(item.id);
-        startDrag = true;
+        if (item.pinned || item.kind === "plus") return;
+        beginDrag({
+          clientX: lastPtr.x,
+          clientY: lastPtr.y,
+          pointerId: lastPtr.id,
+          cancelable: false,
+        }, btn, item);
       }, 400);
     });
     btn.addEventListener("pointermove", function (ev) {
+      lastPtr = { x: ev.clientX, y: ev.clientY, id: ev.pointerId };
       if (press && (Math.abs(ev.clientX - sx) > 14 || Math.abs(ev.clientY - sy) > 14)) {
         clearPress();
-        return;
       }
-      if (!startDrag || drag) return;
-      if (Math.abs(ev.clientX - sx) < 10 && Math.abs(ev.clientY - sy) < 10) return;
-      if (item.pinned || item.kind === "plus") return;
-      beginDrag(ev, btn, item);
     });
     btn.addEventListener("pointerup", function () {
       clearPress();
-      startDrag = false;
     });
     btn.addEventListener("pointercancel", function () {
       clearPress();
-      startDrag = false;
       endDrag(false);
     });
     btn.addEventListener("click", function (ev) {
@@ -894,14 +1042,19 @@
       btn: btn,
       from: from,
       hole: from,
-      dropFolder: null,
       list: list,
       pointer: ev.pointerId,
       ghost: null,
     };
     dragged = true;
+    document.documentElement.classList.add("is-drag");
     try { btn.setPointerCapture(ev.pointerId); } catch (e) {}
     btn.classList.add("is-ghost");
+    list.forEach(function (el) {
+      el.style.transition = "transform 0.16s ease";
+    });
+    const plus = document.querySelector("#feed .tile-add");
+    if (plus) plus.style.pointerEvents = "none";
     const ghost = btn.cloneNode(true);
     ghost.classList.add("tile-drag");
     ghost.classList.remove("is-ghost", "is-pick");
@@ -922,35 +1075,53 @@
     if (ev.cancelable) ev.preventDefault();
   }
 
+  function holeFromPoint(x, y) {
+    if (!drag) return 0;
+    const feed = document.getElementById("feed");
+    if (!feed) return drag.from;
+    const box = feed.getBoundingClientRect();
+    const cols = 3;
+    const gap = 2;
+    const cellW = drag.cellW + gap;
+    const cellH = drag.cellH + gap;
+    if (cellW <= 0 || cellH <= 0) return drag.from;
+    let col = Math.floor((x - box.left) / cellW);
+    let row = Math.floor((y - box.top) / cellH);
+    col = Math.max(0, Math.min(cols - 1, col));
+    const n = drag.list.length;
+    if (n <= 0) return 0;
+    const maxRow = Math.floor((n - 1) / cols);
+    if (row < 0) row = 0;
+    let idx;
+    if (row > maxRow || row * cols + col >= n) {
+      idx = n - 1;
+    } else {
+      idx = row * cols + col;
+    }
+    if (drag.hole != null && idx !== drag.hole) {
+      const stayCol = drag.hole % cols;
+      const stayRow = Math.floor(drag.hole / cols);
+      const cx = box.left + (stayCol + 0.5) * cellW;
+      const cy = box.top + (stayRow + 0.5) * cellH;
+      if (Math.hypot(x - cx, y - cy) < Math.min(cellW, cellH) * 0.22) idx = drag.hole;
+    }
+    if (isJobs()) {
+      const pinned = drag.list.findIndex(function (el) { return el.classList.contains("is-pinned"); });
+      if (pinned === 0) idx = Math.max(1, idx);
+    }
+    return idx;
+  }
+
   function onDragMove(ev) {
     if (!drag) return;
     if (ev.cancelable) ev.preventDefault();
+    lastPtr = { x: ev.clientX, y: ev.clientY, id: ev.pointerId };
     if (drag.ghost) {
       drag.ghost.style.left = (ev.clientX - drag.offX) + "px";
       drag.ghost.style.top = (ev.clientY - drag.offY) + "px";
     }
-    const hit = document.elementFromPoint(ev.clientX, ev.clientY);
-    const over = hit && hit.closest ? hit.closest("#feed .tile") : null;
-    drag.dropFolder = null;
-    drag.list.forEach(function (el) { el.classList.remove("is-drop"); });
-    if (over && over.classList.contains("tile-add")) {
-      shiftHole(drag.from);
-      return;
-    }
-    const cat = catalog();
-    const overItem = over && cat[over.dataset.id];
-    if (overItem && overItem.kind === "org" && overItem.id !== drag.item.id && drag.item.kind !== "org" && drag.item.kind !== "job") {
-      over.classList.add("is-drop");
-      drag.dropFolder = overItem;
-      shiftHole(drag.from);
-      return;
-    }
-    const idx = over ? drag.list.indexOf(over) : -1;
-    let hole = idx >= 0 ? idx : drag.from;
-    if (isJobs()) {
-      const pinned = drag.list.findIndex(function (el) { return el.classList.contains("is-pinned"); });
-      if (pinned === 0) hole = Math.max(1, hole);
-    }
+    const hole = holeFromPoint(ev.clientX, ev.clientY);
+    if (hole === drag.hole) return;
     drag.hole = hole;
     shiftHole(hole);
   }
@@ -973,7 +1144,6 @@
       const dx = (visual % cols) - (i % cols);
       const dy = Math.floor(visual / cols) - Math.floor(i / cols);
       const gap = 2;
-      el.style.transition = "transform 0.16s ease";
       el.style.transform = "translate(" + (dx * (drag.cellW + gap)) + "px," + (dy * (drag.cellH + gap)) + "px)";
     });
   }
@@ -1001,16 +1171,12 @@
     if (!drag) return;
     const state = drag;
     drag = null;
+    document.documentElement.classList.remove("is-drag");
+    const plus = document.querySelector("#feed .tile-add");
+    if (plus) plus.style.pointerEvents = "";
     if (state.ghost && state.ghost.parentNode) state.ghost.parentNode.removeChild(state.ghost);
     clearShift();
     if (!commit) return;
-    if (state.dropFolder && state.item.kind !== "job") {
-      post("/api/host/org", { op: "assign", books: [state.item.id], folders: [state.dropFolder.id] }).then(function () {
-        clearSelect();
-        reload();
-      });
-      return;
-    }
     if (state.hole === state.from) return;
     const ids = state.list.map(function (el) { return el.dataset.id; });
     const moving = ids.splice(state.from, 1)[0];
@@ -1030,6 +1196,7 @@
   function attach(token) {
     key = token;
     ensureRail();
+    ensureSelectSwitch();
     if (attached) {
       syncGear();
       return;
