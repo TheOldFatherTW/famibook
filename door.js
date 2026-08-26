@@ -466,7 +466,7 @@
     const shield = document.createElement("span");
     shield.className = "tile-shield";
     btn.appendChild(shield);
-    if (item.volume != null && item.volume !== "") {
+    if (item.kind !== "folder" && item.volume != null && item.volume !== "") {
       const ep = document.createElement("span");
       ep.className = "tile-ep";
       ep.textContent = String(item.volume);
