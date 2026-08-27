@@ -115,10 +115,6 @@ body.famiWeb #navIncoming.bookShadow {
 body.famiWeb .pageHit {
   z-index: 6;
   touch-action: none;
-  width: calc(48px + env(safe-area-inset-left, 0px));
-}
-body.famiWeb #hitNext {
-  width: calc(48px + env(safe-area-inset-right, 0px));
 }
 body.famiWeb .navMenu {
   background: transparent;

@@ -90,13 +90,13 @@ window.FAMI_WEB_READER = true;
     document.head.appendChild(pre);
     var files = ["css/global.css", "css/read.css", "css/navImage.css", "css/navMenu.css", "css/config.css", "css/mybook.css"];
     for (var i = 0; i < files.length; i++) {
-      document.write('<link rel="stylesheet" href="' + origin + "/static/" + files[i] + '?v=19"/>');
+      document.write('<link rel="stylesheet" href="' + origin + "/static/" + files[i] + '?v=20"/>');
     }
   }
 })();
 </script>
 <link rel="stylesheet" href="./app.css?v=30"/>
-<link rel="stylesheet" href="./read.css?v=13"/>
+<link rel="stylesheet" href="./read.css?v=14"/>
 </head>
 <body class="manga lightTheme famiWeb">
 <div id="loaderContainer">
@@ -239,7 +239,7 @@ window.FAMI_WEB_READER = true;
     return;
   }
   var s = document.createElement("script");
-  s.src = origin + "/static/reader.js?v=23";
+  s.src = origin + "/static/reader.js?v=24";
   s.async = false;
   document.body.appendChild(s);
 })();
