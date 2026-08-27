@@ -80,12 +80,23 @@ html, body {
   justify-content: flex-start;
   padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(8px + env(safe-area-inset-bottom, 0px));
 }
+.home-head {
+  position: relative;
+  width: min(720px, 100%);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.home-head[hidden] {
+  display: none !important;
+}
 .stage-bg {
   position: absolute;
   left: 50%;
   top: 0;
   width: 100vw;
-  height: 280px;
+  height: 100%;
   transform: translateX(-50%);
   z-index: 0;
   pointer-events: none;
@@ -100,10 +111,12 @@ html, body {
   min-height: 100vh;
   justify-content: center;
 }
+.hall.is-invite .home-head,
 .hall.is-invite .local-cabs,
 .hall.is-invite #album,
 .hall.is-invite .tag-board,
 .hall.is-invite .stage-bg,
+.hall.is-booting .home-head,
 .hall.is-booting .local-cabs,
 .hall.is-booting .tag-board,
 .hall.is-booting .stage-bg,
@@ -216,7 +229,7 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
 }
 .invite-wait-bar { height: 18px; width: 100%; color: var(--accent); }
 .cab-hud {
-  width: min(720px, 100%);
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -266,6 +279,7 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
   z-index: 1;
   isolation: isolate;
 }
+.home-head,
 .cab-hud,
 .tag-board,
 .feed,
@@ -547,7 +561,7 @@ button.settings-entry:active {
     0 1px 2px rgba(255, 255, 255, 0.8),
     0 0 12px rgba(255, 255, 255, 0.7);
 }
-.tag-board { width: min(720px, 100%); margin: 4px auto 0; text-align: left; }
+.tag-board { width: 100%; margin: 4px auto 0; text-align: left; }
 html.has-rail .tag-board {
   padding-right: calc(64px + env(safe-area-inset-right, 0px));
 }
@@ -992,7 +1006,7 @@ button.batch-tag-close::before {
 .err { color: var(--accent); min-height: 1.2em; }
 label { display: block; margin: 18px 0 8px; color: var(--mute); text-align: left; }
 @media (min-width: 768px) {
-  .cab-hud, .tag-board, .feed { width: min(720px, 100%); }
+  .home-head, .cab-hud, .tag-board, .feed { width: min(720px, 100%); }
   .album-settings {
     right: 12px;
     bottom: 10px;

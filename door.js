@@ -18,6 +18,7 @@
   const coverInput = document.getElementById("cover-input");
   const backdropInput = document.getElementById("backdrop-input");
   const stageBg = document.getElementById("stage-bg");
+  const homeHead = document.getElementById("home-head");
   const shelfBack = document.getElementById("shelf-back");
   let settingsWrap = null;
   let settingsCatch = null;
@@ -99,15 +100,15 @@
   }
 
   function layoutStage() {
-    if (!stageBg || !hall || stageBg.hidden) return;
-    const hallBox = hall.getBoundingClientRect();
+    if (!stageBg || stageBg.hidden) return;
+    const head = homeHead || stageBg.parentElement;
+    if (!head) return;
+    const headBox = head.getBoundingClientRect();
     const tags = document.getElementById("tag-board");
-    const startBox = tags && !tags.hidden ? tags.getBoundingClientRect() : (feed ? feed.getBoundingClientRect() : null);
-    const endBox = feed ? feed.getBoundingClientRect() : startBox;
-    const start = startBox ? Math.max(0, startBox.top - hallBox.top) : 180;
-    const end = endBox ? Math.max(start + 24, endBox.top - hallBox.top) : start + 80;
+    const startBox = tags && !tags.hidden ? tags.getBoundingClientRect() : null;
+    const start = startBox ? Math.max(0, startBox.top - headBox.top) : Math.round(headBox.height * 0.55);
+    const end = Math.max(start + 24, headBox.height);
     const fade = "linear-gradient(to bottom, #000 0, #000 " + Math.round(start) + "px, transparent " + Math.round(end) + "px)";
-    stageBg.style.height = Math.round(end) + "px";
     stageBg.style.webkitMaskImage = fade;
     stageBg.style.maskImage = fade;
     if (backdropUrl) tuneNameOnBackdrop(backdropUrl);
@@ -425,6 +426,7 @@
       }
     }
     cabHud.hidden = false;
+    if (homeHead) homeHead.hidden = false;
     const settings = ensureSettings();
     const host = cabHud.querySelector(".cab-wrap");
     if (host && settings.parentNode !== host) host.appendChild(settings);

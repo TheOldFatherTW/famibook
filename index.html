@@ -50,7 +50,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./app.css?v=31"/>
+<link rel="stylesheet" href="./app.css?v=32"/>
 <script src="./config.js?v=1787662694"></script>
 <script>
 (function () {
@@ -99,7 +99,6 @@
 <body>
 <div class="blobs" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
 <div class="hall with-feed is-booting" id="hall">
-  <div class="stage-bg" id="stage-bg" hidden></div>
   <div class="profile">
     <div class="lissajous" id="lissajous"></div>
     <h1 class="brand">FamiBook</h1>
@@ -124,25 +123,28 @@
       <div class="invite-wait-bar" id="invite-wait-bar"></div>
     </div>
   </div>
-  <div class="cab-hud" id="cab-hud" hidden>
-    <div class="cab-wrap">
-      <div class="cab-cover">
-        <div class="cab-ring" aria-hidden="true"></div>
-        <div class="cab-face"><img id="face-img" alt="" hidden/><span class="cab-foil" aria-hidden="true"></span></div>
-        <div class="cab-mask" aria-hidden="true"></div>
+  <div class="home-head" id="home-head" hidden>
+    <div class="stage-bg" id="stage-bg" hidden></div>
+    <div class="cab-hud" id="cab-hud" hidden>
+      <div class="cab-wrap">
+        <div class="cab-cover">
+          <div class="cab-ring" aria-hidden="true"></div>
+          <div class="cab-face"><img id="face-img" alt="" hidden/><span class="cab-foil" aria-hidden="true"></span></div>
+          <div class="cab-mask" aria-hidden="true"></div>
+        </div>
+        <div id="album-settings" class="album-settings" hidden></div>
       </div>
-      <div id="album-settings" class="album-settings" hidden></div>
+      <p class="reader-name" id="reader-name"></p>
     </div>
-    <p class="reader-name" id="reader-name"></p>
-  </div>
-  <div class="tag-board" id="tag-board" hidden>
-    <div class="mode-bar" id="mode-bar" hidden></div>
-    <button type="button" class="ins-icon nav-back" id="shelf-back" hidden aria-label="返回書櫃">
-      <span class="ins-ring"></span>
-      <span class="ins-face">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5M8.5 12H20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </span>
-    </button>
+    <div class="tag-board" id="tag-board" hidden>
+      <div class="mode-bar" id="mode-bar" hidden></div>
+      <button type="button" class="ins-icon nav-back" id="shelf-back" hidden aria-label="返回書櫃">
+        <span class="ins-ring"></span>
+        <span class="ins-face">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5M8.5 12H20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+      </button>
+    </div>
   </div>
   <div class="feed" id="feed"></div>
 </div>
@@ -183,6 +185,6 @@
 <script src="./lissajous.js?v=2"></script>
 <script src="./gate.js?v=2"></script>
 <script src="./host.js?v=13"></script>
-<script src="./door.js?v=26"></script>
+<script src="./door.js?v=27"></script>
 </body>
 </html>
