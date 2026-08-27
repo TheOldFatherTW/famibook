@@ -51,6 +51,14 @@ window.FAMI_WEB_READER = true;
       history.replaceState({}, "", pin);
     }
   }
+  // Edge swipe-back must not dump the reader to the bookshelf.
+  // Explicit 返回 still uses location.href.
+  window.__famiReaderStay = true;
+  function stayInReader() {
+    try { history.pushState({ famiReader: 1 }, "", location.href); } catch (e) {}
+  }
+  stayInReader();
+  window.addEventListener("popstate", stayInReader);
   var origin = String(window.VAULT_ORIGIN || "").replace(/\/$/, "");
   if (origin) {
     var pre = document.createElement("link");
@@ -60,13 +68,13 @@ window.FAMI_WEB_READER = true;
     document.head.appendChild(pre);
     var files = ["css/global.css", "css/read.css", "css/navImage.css", "css/navMenu.css", "css/config.css", "css/mybook.css"];
     for (var i = 0; i < files.length; i++) {
-      document.write('<link rel="stylesheet" href="' + origin + "/static/" + files[i] + '?v=15"/>');
+      document.write('<link rel="stylesheet" href="' + origin + "/static/" + files[i] + '?v=16"/>');
     }
   }
 })();
 </script>
 <link rel="stylesheet" href="./app.css?v=20"/>
-<link rel="stylesheet" href="./read.css?v=9"/>
+<link rel="stylesheet" href="./read.css?v=10"/>
 </head>
 <body class="manga lightTheme famiWeb">
 <div id="loaderContainer">
@@ -209,7 +217,7 @@ window.FAMI_WEB_READER = true;
     return;
   }
   var s = document.createElement("script");
-  s.src = origin + "/static/reader.js?v=16";
+  s.src = origin + "/static/reader.js?v=17";
   s.async = false;
   document.body.appendChild(s);
 })();

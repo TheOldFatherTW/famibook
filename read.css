@@ -20,6 +20,8 @@ html, body.famiWeb {
   font-weight: 400 !important;
   letter-spacing: 0 !important;
   touch-action: manipulation;
+  overscroll-behavior: none;
+  overscroll-behavior-x: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
@@ -50,6 +52,8 @@ body.famiWeb #navImageContainer {
   background: var(--void);
   position: relative;
   overflow: hidden;
+  touch-action: none;
+  overscroll-behavior-x: none;
 }
 body.famiWeb #navStage {
   position: absolute;
@@ -111,9 +115,16 @@ body.famiWeb #navIncoming.bookShadow {
 }
 body.famiWeb .pageHit {
   z-index: 6;
+  touch-action: none;
 }
 body.famiWeb .navMenu {
   background: transparent;
+}
+body.famiWeb #topMenu.hidden,
+body.famiWeb #bottomMenu.hidden,
+body.famiWeb #topMenu.hidden > .navContainer,
+body.famiWeb #bottomMenu.hidden > .navContainer {
+  pointer-events: none !important;
 }
 body.famiWeb .navMenu > .navContainer {
   width: 100%;
