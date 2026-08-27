@@ -41,11 +41,6 @@
   let orgSnap = { folders: [], favorites: [] };
   let noteTimer = 0;
   let jobsBusy = false;
-  let lastSnap = {
-    stop_capture: false,
-    stop_steam: false,
-    stop_research: false,
-  };
 
   function api(path, opts) {
     return window.FamiGate.api(path, key, Object.assign({ timeout: 20000 }, opts || {}));
@@ -141,24 +136,6 @@
     const head = [];
     head.push(gearBtn(MAG, "找書", "find", openFind));
     head.push(gearBtn(PLUS, "新增…", "plus", openPlus));
-    head.push(gearBtn(
-      lastSnap.stop_capture ? PLAY : PAUSE,
-      lastSnap.stop_capture ? "繼續擷取佇列" : "暫停擷取佇列",
-      "q-capture",
-      function () { toggleQueue("capture", !!lastSnap.stop_capture); }
-    ));
-    head.push(gearBtn(
-      lastSnap.stop_steam ? PLAY : PAUSE,
-      lastSnap.stop_steam ? "繼續遊戲佇列" : "暫停遊戲佇列",
-      "q-steam",
-      function () { toggleQueue("steam", !!lastSnap.stop_steam); }
-    ));
-    head.push(gearBtn(
-      lastSnap.stop_research ? PLAY : PAUSE,
-      lastSnap.stop_research ? "繼續研究佇列" : "暫停研究佇列",
-      "q-research",
-      function () { toggleQueue("research", !!lastSnap.stop_research); }
-    ));
     const first = menu.firstChild;
     head.forEach(function (row) { menu.insertBefore(row, first); });
     const books = pickedItems().filter(function (it) {
@@ -401,12 +378,6 @@
       box.appendChild(chip);
     });
     body.appendChild(box);
-  }
-
-  function toggleQueue(queue, resume) {
-    post("/api/host/jobs", { op: resume ? "resume" : "stop", queue: queue }).then(function (x) {
-      if (x.res.ok && x.j) paintJobsHud(x.j, true);
-    });
   }
 
   function openFind() {
@@ -999,7 +970,6 @@
   }
 
   function paintJobsHud(snap, reconcile) {
-    if (snap) lastSnap = snap;
     const cover = document.querySelector("#cab-hud .cab-cover");
     const current = snap && snap.current;
     const queued = (snap && snap.queued) || [];
