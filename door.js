@@ -529,15 +529,33 @@
   let hintTimer = 0;
   let bridgeBackAt = 0;
 
-  function tileCover(item) {
-    if (!feed || !item || !item.id) return "";
+  function tileNode(item) {
+    if (!feed || !item || !item.id) return null;
     const tiles = feed.querySelectorAll(".tile");
     for (let i = 0; i < tiles.length; i++) {
-      if (tiles[i].dataset.id !== item.id) continue;
-      const img = tiles[i].querySelector("img");
-      if (img && (img.currentSrc || img.src)) return img.currentSrc || img.src;
+      if (tiles[i].dataset.id === item.id) return tiles[i];
     }
+    return null;
+  }
+
+  function tileCover(item) {
+    const tile = tileNode(item);
+    if (!tile) return "";
+    const img = tile.querySelector("img");
+    if (img && (img.currentSrc || img.src)) return img.currentSrc || img.src;
     return "";
+  }
+
+  function sizeBridgeCover(coverEl, item) {
+    if (!coverEl) return;
+    coverEl.style.width = "";
+    coverEl.style.height = "";
+    const tile = tileNode(item);
+    if (!tile) return;
+    const box = tile.getBoundingClientRect();
+    if (box.width < 8 || box.height < 8) return;
+    coverEl.style.width = Math.round(box.width) + "px";
+    coverEl.style.height = Math.round(box.height) + "px";
   }
 
   function readingUrl(item, extra) {
@@ -675,17 +693,17 @@
       if (cover) {
         coverEl.hidden = false;
         coverEl.src = cover;
+        sizeBridgeCover(coverEl, item);
       } else {
         coverEl.removeAttribute("src");
         coverEl.hidden = true;
+        coverEl.style.width = "";
+        coverEl.style.height = "";
       }
     }
     if (bridge) bridge.classList.toggle("has-cover", !!cover);
-    if (hint) hint.hidden = true;
     window.clearTimeout(hintTimer);
-    hintTimer = window.setTimeout(function () {
-      if (readerOpen && layer && !layer.classList.contains("is-live") && hint) hint.hidden = false;
-    }, 160);
+    if (hint) hint.hidden = false;
     rememberReading(item, cover);
     document.documentElement.classList.add("is-reading");
     layer.hidden = false;

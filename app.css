@@ -1418,16 +1418,20 @@ html.is-reading body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 22px;
+  padding: 72px 16px 32px;
   background: #f2f2f7;
+  pointer-events: none;
 }
 #reader-bridge-cover {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  position: static;
+  width: calc((min(720px, 100%) - 4px) / 3);
+  height: auto;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
   object-position: center;
-  background: #f2f2f7;
+  flex: 0 0 auto;
+  background: #efe8ea;
 }
 #reader-bridge-cover[hidden] {
   display: none !important;
@@ -1438,33 +1442,36 @@ html.is-reading body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   pointer-events: none;
-}
-#reader-bridge.has-cover #reader-hint {
-  margin-top: auto;
-  margin-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
 }
 #reader-hint[hidden] {
   display: none !important;
 }
 #reader-hint .thinking-five {
   margin: 0;
+  height: 28px;
+  gap: 12px;
 }
 #reader-hint .thinking-five span {
-  background: #007aff;
+  width: 14px;
+  height: 14px;
+  background: var(--rose);
 }
 #reader-hint .read-wait {
   margin: 0;
-  color: #8e8e93;
-  font-size: 16px;
-  font-weight: 600;
+  color: #1c1c1e;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 #reader-layer #reader-back {
   position: absolute;
   top: calc(env(safe-area-inset-top, 0px) + 8px);
   left: max(16px, calc(env(safe-area-inset-left, 0px) + 12px));
   z-index: 3;
+  opacity: 0;
+  pointer-events: none;
 }
 #reader-layer.is-live #reader-bridge,
 #reader-layer.is-live #reader-back {
