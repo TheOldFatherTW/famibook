@@ -56,17 +56,17 @@
   let catalog = {};
   let isGm = false;
   let hostView = true;
-  let hostTab = "all";
+  let hostTab = "title";
   let hostQuery = "";
+  let waitBusy = false;
+  let waitTimer = 0;
   try {
     if (localStorage.getItem("famibook.hostView") === "0") hostView = false;
   } catch (e) {}
   const MODES = [
-    ["all", "所有"],
-    ["research", "研究"],
     ["title", "書籍"],
     ["manga", "漫畫"],
-    ["jobs", "工作"],
+    ["research", "研究"],
   ];
   const HEART =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20C10.5 18.4 7.3 15.8 5.4 11.9C4 9.1 5.2 6 8.4 6c1.8 0 3 1.1 3.6 2.2C12.6 7.1 13.8 6 15.6 6c3.2 0 4.4 3.1 3 5.9C16.7 15.8 13.5 18.4 12 20Z"/></svg>';
@@ -222,6 +222,53 @@
     entry.setAttribute("aria-disabled", on ? "true" : "false");
     const badge = entry.querySelector(".ins-icon");
     if (badge) badge.classList.toggle("is-run", !!on);
+  }
+
+  function showWaitCard(title) {
+    const mask = document.getElementById("waitMask");
+    const head = document.getElementById("waitTitle");
+    const pct = document.getElementById("waitPct");
+    if (head) head.textContent = title || "更換背景中";
+    if (pct) pct.textContent = "0%";
+    if (mask) mask.hidden = false;
+  }
+
+  function setWaitPct(n) {
+    const pct = document.getElementById("waitPct");
+    if (pct) pct.textContent = Math.max(0, Math.min(100, Math.round(n))) + "%";
+  }
+
+  function hideWaitCard() {
+    const mask = document.getElementById("waitMask");
+    if (mask) mask.hidden = true;
+    if (waitTimer) {
+      window.clearInterval(waitTimer);
+      waitTimer = 0;
+    }
+  }
+
+  function tickWait() {
+    const pct = document.getElementById("waitPct");
+    const n = parseInt((pct && pct.textContent) || "0", 10) || 0;
+    if (n < 90) setWaitPct(n + 1);
+  }
+
+  function postFile(url, body, onPct) {
+    return new Promise(function (resolve, reject) {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url);
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) resolve(xhr);
+        else reject(new Error("fail"));
+      };
+      xhr.onerror = function () { reject(new Error("net")); };
+      if (xhr.upload) {
+        xhr.upload.onprogress = function (ev) {
+          if (ev.lengthComputable && ev.total) onPct(Math.round((ev.loaded / ev.total) * 100));
+        };
+      }
+      xhr.send(body);
+    });
   }
 
   function scrubLegacySettings() {
@@ -420,10 +467,10 @@
     if (faceImg) {
       if (reader.has_cover) {
         faceImg.src = window.FamiGate.origin() + "/cover?person=" + encodeURIComponent(reader.id) + "&k=" + encodeURIComponent(key) + "&r=" + (reader.cover_rev || 0);
-        faceImg.hidden = false;
       } else {
-        faceImg.hidden = true;
+        faceImg.src = "./face-default.jpg";
       }
+      faceImg.hidden = false;
     }
     cabHud.hidden = false;
     if (homeHead) homeHead.hidden = false;
@@ -738,10 +785,33 @@
     layoutStage();
   }
 
+  function pickTab(tab) {
+    hostTab = tab === "all" ? "title" : (tab || "title");
+    cwd = "";
+    parentCwd = "";
+    hostQuery = "";
+    const bar = document.getElementById("mode-bar");
+    if (bar) {
+      bar.querySelectorAll(".mode-btn").forEach(function (el) {
+        el.classList.toggle("is-on", el.dataset.mode === hostTab);
+      });
+    }
+    if (window.FamiHost && window.FamiHost.clearSelect) window.FamiHost.clearSelect();
+    loadShelf(true);
+  }
+
   function ensureModes() {
     const bar = document.getElementById("mode-bar");
     if (!bar || bar.dataset.ready) return;
     bar.dataset.ready = "1";
+    const heart = document.createElement("button");
+    heart.type = "button";
+    heart.className = "mode-btn mode-heart" + (hostTab === "fav" ? " is-on" : "");
+    heart.dataset.mode = "fav";
+    heart.setAttribute("aria-label", "愛心");
+    heart.innerHTML = HEART;
+    heart.addEventListener("click", function () { pickTab("fav"); });
+    bar.appendChild(heart);
     MODES.forEach(function (pair) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -749,22 +819,14 @@
       btn.dataset.mode = pair[0];
       btn.textContent = pair[1];
       btn.addEventListener("click", function () {
-        hostTab = pair[0];
-        cwd = "";
-        parentCwd = "";
-        hostQuery = "";
-        bar.querySelectorAll(".mode-btn").forEach(function (el) {
-          el.classList.toggle("is-on", el.dataset.mode === hostTab);
-        });
-        if (window.FamiHost && window.FamiHost.clearSelect) window.FamiHost.clearSelect();
-        loadShelf(true);
+        pickTab(pair[0]);
       });
       bar.appendChild(btn);
     });
   }
 
   function viewKey() {
-    return (hostOn() ? (hostTab || "all") : "list") + "|" + (cwd || "") + "|" + (hostQuery || "");
+    return (hostOn() ? (hostTab || "title") : "list") + "|" + (cwd || "") + "|" + (hostQuery || "");
   }
 
   function feedBookTiles() {
@@ -858,7 +920,7 @@
   function prefetchOtherTabs() {
     if (!hostOn() || cwd || prefetchOnce) return;
     prefetchOnce = true;
-    ["all", "research", "title", "manga"].forEach(function (tab) {
+    ["title", "research", "manga", "fav"].forEach(function (tab) {
       if (tab === hostTab) return;
       const path = "/api/host/shelf?offset=0&limit=" + LIMIT + "&tab=" + encodeURIComponent(tab);
       window.FamiGate.api(path, key, { timeout: 20000 }).then(function (x) {
@@ -888,6 +950,7 @@
     if (busy && !reset) return;
     const gen = ++shelfGen;
     if (reset && window.FamiHost && window.FamiHost.clearSelect) window.FamiHost.clearSelect();
+    if (hostTab === "all") hostTab = "title";
     if (reset) paintFromCache(viewKey()) || resetFeed();
     if (hostOn() && hostTab === "jobs") {
       loadingMore = false;
@@ -901,7 +964,7 @@
     loadingMore = true;
     const reqOffset = reset ? 0 : offset;
     const folder = cwd ? "&cwd=" + encodeURIComponent(cwd) : "";
-    const tab = hostOn() ? "&tab=" + encodeURIComponent(hostTab || "all") : "";
+      const tab = hostOn() ? "&tab=" + encodeURIComponent(hostTab || "title") : "";
     const q = hostOn() && hostQuery ? "&q=" + encodeURIComponent(hostQuery) : "";
     const path = hostOn()
       ? "/api/host/shelf?offset=" + reqOffset + "&limit=" + LIMIT + folder + tab + q
@@ -1094,19 +1157,38 @@
 
   if (backdropInput) backdropInput.addEventListener("change", async () => {
     const file = backdropInput.files && backdropInput.files[0];
-    if (!file) return;
+    if (!file || waitBusy) {
+      backdropInput.value = "";
+      return;
+    }
+    waitBusy = true;
+    showWaitCard("更換背景中");
+    waitTimer = window.setInterval(tickWait, 280);
     const entry = document.querySelector('.settings-entry[data-job="backdrop"]');
     setJobRun(entry, true);
     setCabRun(true);
     try {
       const fd = new FormData();
       fd.append("backdrop", file);
-      await fetch(window.FamiGate.origin() + "/api/backdrop?k=" + encodeURIComponent(key), { method: "POST", body: fd });
+      await postFile(
+        window.FamiGate.origin() + "/api/backdrop?k=" + encodeURIComponent(key),
+        fd,
+        function (n) {
+          if (waitTimer) {
+            window.clearInterval(waitTimer);
+            waitTimer = 0;
+          }
+          setWaitPct(n);
+        }
+      );
+      setWaitPct(100);
       const door = await window.FamiGate.api("/api/door", key, { timeout: 15000 });
       if (door.j && door.j.reader) renderMe(door.j.reader);
     } finally {
+      hideWaitCard();
       setJobRun(entry, false);
       setCabRun(false);
+      waitBusy = false;
       backdropInput.value = "";
     }
   });
@@ -1134,8 +1216,16 @@
       feed.appendChild(el);
       return el;
     },
-    setKind: function (kind) { hostTab = kind || "all"; },
-    setTab: function (tab) { hostTab = tab || "all"; },
+    setKind: function (kind) { hostTab = kind === "all" ? "title" : (kind || "title"); },
+    setTab: function (tab) {
+      hostTab = tab === "all" ? "title" : (tab || "title");
+      const bar = document.getElementById("mode-bar");
+      if (bar) {
+        bar.querySelectorAll(".mode-btn").forEach(function (el) {
+          el.classList.toggle("is-on", el.dataset.mode === hostTab);
+        });
+      }
+    },
     setQuery: function (q) { hostQuery = q || ""; },
     setCabRun: setCabRun,
   };

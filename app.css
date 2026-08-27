@@ -213,7 +213,7 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--rose);
   animation: think-five 1.2s ease-in-out infinite;
 }
 .thinking-five span:nth-child(2) { animation-delay: 0.12s; }
@@ -600,6 +600,19 @@ html.has-rail .feed {
   box-shadow: none;
   background: linear-gradient(120deg, #fa7e1e 0%, #d62976 48%, #962fbf 100%);
 }
+.mode-btn.mode-heart {
+  padding: 8px 11px;
+  color: #d62976;
+}
+.mode-btn.mode-heart svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  fill: currentColor;
+}
+.mode-btn.mode-heart.is-on {
+  color: #fff;
+}
 .photo-rail {
   position: fixed;
   right: max(8px, env(safe-area-inset-right, 0px));
@@ -875,6 +888,19 @@ html.has-rail .feed {
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 16px 44px rgba(0, 0, 0, 0.26);
   -webkit-overflow-scrolling: touch;
+}
+.batch-tag-sheet.is-wait {
+  text-align: center;
+}
+.wait-pct {
+  margin: 8px 0 4px;
+  font-size: 28px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.batch-tag-sheet.is-wait .thinking-five {
+  margin: 12px 0 4px;
 }
 button.tag-apply {
   position: relative;
@@ -1250,6 +1276,15 @@ button.tag-chip {
 .hp-think span {
   width: 6px;
   height: 6px;
+}
+.tile-job-hud .hp-label {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+.tile-job-hud .hp-think {
+  flex: 1 1 100%;
+  justify-content: flex-start;
+  order: 3;
 }
 .hp.is-run .hp-fill {
   background-image:

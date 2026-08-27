@@ -50,7 +50,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./app.css?v=32"/>
+<link rel="stylesheet" href="./app.css?v=33"/>
 <script src="./config.js?v=1787662694"></script>
 <script>
 (function () {
@@ -169,6 +169,15 @@
     <div id="actBody"></div>
   </div>
 </div>
+<div class="batch-tag-mask" id="waitMask" hidden>
+  <div class="batch-tag-sheet is-wait" id="waitSheet">
+    <div class="batch-tag-head">
+      <p id="waitTitle">更換背景中</p>
+    </div>
+    <p class="wait-pct" id="waitPct">0%</p>
+    <div class="thinking-five" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+  </div>
+</div>
 <div class="ask-mask" id="askMask" hidden>
   <div class="ask-card" role="dialog" aria-modal="true">
     <p id="askText">丟掉這本?</p>
@@ -184,7 +193,7 @@
 </div>
 <script src="./lissajous.js?v=2"></script>
 <script src="./gate.js?v=2"></script>
-<script src="./host.js?v=13"></script>
-<script src="./door.js?v=27"></script>
+<script src="./host.js?v=14"></script>
+<script src="./door.js?v=28"></script>
 </body>
 </html>

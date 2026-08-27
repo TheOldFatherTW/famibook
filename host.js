@@ -19,6 +19,8 @@
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6l12 6-12 6z" fill="currentColor"/></svg>';
   const MAG =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15.2 15.2L20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  const WORK =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4.5" width="12" height="15" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 4.5h6v2.2H9z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 11h6M9 14.5h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   const JOB_LABEL = {
     capture: "截取",
     series: "全套截取",
@@ -135,8 +137,17 @@
     menu.querySelectorAll("[data-host-adv]").forEach(function (n) { n.remove(); });
     const head = [];
     head.push(gearBtn(MAG, "找書", "find", openFind));
+    head.push(gearBtn(WORK, "工作", "jobs", function () {
+      if (window.FamiShelf && window.FamiShelf.setTab) window.FamiShelf.setTab("jobs");
+      if (window.FamiShelf && window.FamiShelf.reload) window.FamiShelf.reload();
+    }));
     const first = menu.firstChild;
     head.forEach(function (row) { menu.insertBefore(row, first); });
+    const jobsRow = menu.querySelector('[data-job="jobs"]');
+    if (jobsRow) {
+      const badge = jobsRow.querySelector(".ins-icon");
+      if (badge) badge.classList.toggle("is-run", isJobs());
+    }
     const books = pickedItems().filter(function (it) {
       return it && it.kind !== "org" && it.kind !== "job";
     });
@@ -386,19 +397,18 @@
     if (!mask || !body) return;
     if (title) title.textContent = "找書";
     body.innerHTML = "";
-    const pending = { tab: tab() || "all", q: "" };
+    const pending = { tab: tab() === "jobs" || tab() === "all" ? "title" : (tab() || "title"), q: "" };
     body.appendChild(chipRow(
-      [["all", "所有"], ["research", "研究"], ["title", "書籍"], ["manga", "漫畫"], ["jobs", "工作"]],
+      [["fav", "愛心"], ["title", "書籍"], ["manga", "漫畫"], ["research", "研究"]],
       pending.tab,
       function (kind) {
         pending.tab = kind;
         body.querySelectorAll(".tag-chip").forEach(function (el) {
           el.classList.toggle("is-on", el.textContent && (
-            (kind === "all" && el.textContent === "所有") ||
+            (kind === "fav" && el.textContent === "愛心") ||
             (kind === "research" && el.textContent === "研究") ||
             (kind === "title" && el.textContent === "書籍") ||
-            (kind === "manga" && el.textContent === "漫畫") ||
-            (kind === "jobs" && el.textContent === "工作")
+            (kind === "manga" && el.textContent === "漫畫")
           ));
         });
       }
@@ -1161,6 +1171,7 @@
       if (window.FamiShelf && window.FamiShelf.remember) window.FamiShelf.remember();
     }).finally(function () {
       jobsBusy = false;
+      paintJobsIcon();
     });
   }
 
@@ -1192,10 +1203,16 @@
     }).catch(function () {});
   }
 
+  function paintJobsIcon() {
+    const badge = document.querySelector('#album-settings .settings-entry[data-job="jobs"] .ins-icon');
+    if (badge) badge.classList.toggle("is-run", isJobs());
+  }
+
   function afterPaint() {
     paintPlus();
     paintPicks();
     refreshOrg();
+    paintJobsIcon();
     const row = document.getElementById("job-stops");
     if (row) {
       row.hidden = true;
