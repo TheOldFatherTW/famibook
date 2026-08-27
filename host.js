@@ -21,6 +21,8 @@
     '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15.2 15.2L20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
   const WORK =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4.5" width="12" height="15" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 4.5h6v2.2H9z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 11h6M9 14.5h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  const REPORT =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h8l3 3v12H7z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M15 4.5v3h3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9.5 12h5M9.5 15.5h3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   const JOB_LABEL = {
     capture: "截取",
     series: "全套截取",
@@ -80,11 +82,22 @@
     return window.matchMedia("(pointer: fine)").matches && !/iPhone|iPad|iPod/i.test(navigator.userAgent || "");
   }
 
+  function isHost() {
+    return !!(window.FamiShelf && window.FamiShelf.hostOn && window.FamiShelf.hostOn());
+  }
+
   function closeSettings() {
+    if (window.FamiShelf && window.FamiShelf.closeSettings) {
+      window.FamiShelf.closeSettings();
+      return;
+    }
     const wrap = document.getElementById("album-settings");
-    const menu = wrap && wrap.querySelector(".settings-menu");
+    const menu = (wrap && wrap.querySelector(".settings-menu")) || document.querySelector(".settings-menu");
     const toggle = wrap && wrap.querySelector(".settings-toggle");
-    if (menu) menu.hidden = true;
+    if (menu) {
+      menu.hidden = true;
+      if (wrap && menu.parentNode !== wrap) wrap.appendChild(menu);
+    }
     if (toggle) {
       toggle.setAttribute("aria-expanded", "false");
       toggle.classList.remove("is-live");
@@ -132,22 +145,21 @@
   }
 
   function syncGear() {
-    const menu = document.querySelector("#album-settings .settings-menu");
+    const menu = document.querySelector(".settings-menu");
     if (!menu) return;
     menu.querySelectorAll("[data-host-adv]").forEach(function (n) { n.remove(); });
+    if (!isHost()) return;
     const head = [];
     head.push(gearBtn(MAG, "找書", "find", openFind));
-    head.push(gearBtn(WORK, "工作", "jobs", function () {
-      if (window.FamiShelf && window.FamiShelf.setTab) window.FamiShelf.setTab("jobs");
-      if (window.FamiShelf && window.FamiShelf.reload) window.FamiShelf.reload();
+    head.push(gearBtn(WORK, "工作佇列", "jobs", function () {
+      if (window.FamiShelf && window.FamiShelf.pickTab) window.FamiShelf.pickTab("jobs");
+    }));
+    head.push(gearBtn(REPORT, "研究報告", "research", function () {
+      if (window.FamiShelf && window.FamiShelf.pickTab) window.FamiShelf.pickTab("research");
     }));
     const first = menu.firstChild;
     head.forEach(function (row) { menu.insertBefore(row, first); });
-    const jobsRow = menu.querySelector('[data-job="jobs"]');
-    if (jobsRow) {
-      const badge = jobsRow.querySelector(".ins-icon");
-      if (badge) badge.classList.toggle("is-run", isJobs());
-    }
+    paintHostGearIcons();
     const books = pickedItems().filter(function (it) {
       return it && it.kind !== "org" && it.kind !== "job";
     });
@@ -187,13 +199,16 @@
     if (rail) rail.hidden = !on;
     document.documentElement.classList.toggle("has-rail", !!on);
     if (rail) {
+      const host = isHost();
       const heart = rail.querySelector(".rail-heart");
       const folder = rail.querySelector(".rail-folder");
+      const trash = rail.querySelector(".rail-trash");
       if (heart) heart.hidden = isJobs();
       if (folder) {
-        folder.hidden = isJobs();
+        folder.hidden = !host || isJobs();
         folder.classList.toggle("is-off", !folderOk());
       }
+      if (trash) trash.hidden = !host;
     }
   }
 
@@ -399,14 +414,14 @@
     body.innerHTML = "";
     const pending = { tab: tab() === "jobs" || tab() === "all" ? "title" : (tab() || "title"), q: "" };
     body.appendChild(chipRow(
-      [["fav", "愛心"], ["title", "書籍"], ["manga", "漫畫"], ["research", "研究"]],
+      [["fav", "愛心"], ["title", "書籍"], ["manga", "漫畫"], ["research", "研究報告"]],
       pending.tab,
       function (kind) {
         pending.tab = kind;
         body.querySelectorAll(".tag-chip").forEach(function (el) {
           el.classList.toggle("is-on", el.textContent && (
             (kind === "fav" && el.textContent === "愛心") ||
-            (kind === "research" && el.textContent === "研究") ||
+            (kind === "research" && el.textContent === "研究報告") ||
             (kind === "title" && el.textContent === "書籍") ||
             (kind === "manga" && el.textContent === "漫畫")
           ));
@@ -599,6 +614,7 @@
   }
 
   function confirmTrash() {
+    if (!isHost()) return;
     let items = pickedItems();
     if (!items.length) return;
     const jobsOnly = items.every(function (it) { return it.kind === "job"; });
@@ -671,13 +687,14 @@
     if (!items.length) return;
     const ids = items.map(function (it) { return it.id; });
     const allOn = items.every(function (it) { return it.favorite; });
-    post("/api/host/org", { op: "favorite", ids: ids, on: !allOn }).then(function () {
+    post("/api/favorite", { ids: ids, on: !allOn }).then(function () {
       clearSelect();
       reload();
     });
   }
 
   function openFolderSheet() {
+    if (!isHost()) return;
     const books = pickedItems().filter(function (it) { return it.kind !== "job" && it.kind !== "org"; });
     const folders = pickedItems().filter(function (it) { return it.kind === "org"; });
     if (!books.length && !folders.length) return;
@@ -994,7 +1011,7 @@
   }
 
   function pollJobs() {
-    if (!attached || !key) return;
+    if (!attached || !key || !isHost()) return;
     api("/api/host/jobs", { timeout: 8000 }).then(function (x) {
       if (x.res.ok && x.j) paintJobsHud(x.j, true);
     }).catch(function () {});
@@ -1171,7 +1188,7 @@
       if (window.FamiShelf && window.FamiShelf.remember) window.FamiShelf.remember();
     }).finally(function () {
       jobsBusy = false;
-      paintJobsIcon();
+      paintHostGearIcons();
     });
   }
 
@@ -1198,21 +1215,24 @@
   }
 
   function refreshOrg() {
+    if (!isHost()) return Promise.resolve();
     return api("/api/host/org", { timeout: 8000 }).then(function (x) {
       if (x.res.ok && x.j) orgSnap = x.j;
     }).catch(function () {});
   }
 
-  function paintJobsIcon() {
-    const badge = document.querySelector('#album-settings .settings-entry[data-job="jobs"] .ins-icon');
-    if (badge) badge.classList.toggle("is-run", isJobs());
+  function paintHostGearIcons() {
+    const jobsBadge = document.querySelector('.settings-entry[data-job="jobs"] .ins-icon');
+    if (jobsBadge) jobsBadge.classList.toggle("is-run", isJobs());
+    const researchBadge = document.querySelector('.settings-entry[data-job="research"] .ins-icon');
+    if (researchBadge) researchBadge.classList.toggle("is-run", tab() === "research");
   }
 
   function afterPaint() {
     paintPlus();
     paintPicks();
     refreshOrg();
-    paintJobsIcon();
+    paintHostGearIcons();
     const row = document.getElementById("job-stops");
     if (row) {
       row.hidden = true;
@@ -1233,7 +1253,6 @@
       }
     }
     btn.addEventListener("pointerdown", function (ev) {
-      if (window.FamiShelf && window.FamiShelf.hostOn && !window.FamiShelf.hostOn()) return;
       if (ev.button && ev.button !== 0) return;
       if (ev.target && ev.target.closest && ev.target.closest(".job-ctrl")) return;
       sx = ev.clientX;
@@ -1297,6 +1316,7 @@
     isSelect: function () { return selectMode; },
     clearSelect: clearSelect,
     afterPaint: afterPaint,
+    syncGear: syncGear,
     loadJobs: loadJobs,
     paintPlus: paintPlus,
     kind: function () { return tab(); },
