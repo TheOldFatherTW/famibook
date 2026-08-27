@@ -60,6 +60,9 @@
   let hostQuery = "";
   let waitBusy = false;
   let waitTimer = 0;
+  let ready = false;
+  let booting = false;
+  let bootTimer = 0;
   try {
     if (localStorage.getItem("famibook.hostView") === "0") hostView = false;
   } catch (e) {}
@@ -1228,19 +1231,40 @@
   window.addEventListener("resize", layoutStage);
   if (window.visualViewport) window.visualViewport.addEventListener("resize", layoutStage);
 
+  function refreshOrigin() {
+    return fetch("./config.js?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { return r.text(); })
+      .then(function (text) {
+        const m = /VAULT_ORIGIN\s*=\s*"(https:\/\/[^"]+)"/.exec(text);
+        if (m) window.VAULT_ORIGIN = m[1];
+      })
+      .catch(function () {});
+  }
+
+  function scheduleReconnect() {
+    if (ready || bootTimer) return;
+    bootTimer = window.setTimeout(function () {
+      bootTimer = 0;
+      refreshOrigin().then(boot);
+    }, 12000);
+  }
+
   async function boot() {
+    if (booting || ready) return;
+    booting = true;
     window.FamiGate.blockWebChrome();
     window.FamiGate.bindKeyboard();
-    setBoot(true, "正在連接書櫃…");
+    if (!feedBookTiles().length) setBoot(true, "正在連接書櫃…");
     key = window.FAMILY_VIEW_KEY || window.FamiGate.currentKey();
     if (window.FAMILY_FORCE_INVITE) {
       key = window.FAMILY_URL_KEY || "";
     }
-    if (!window.FamiGate.origin()) {
-      statusEl.textContent = "維護中,請5分鐘後再試";
-      return;
-    }
     try {
+      if (!window.FamiGate.origin()) {
+        if (statusEl) statusEl.textContent = "維護中,請5分鐘後再試";
+        scheduleReconnect();
+        return;
+      }
       await window.FamiGate.api("/api/public", "", { timeout: 8000 }).catch(() => null);
       if (!key) {
         setBoot(false);
@@ -1254,7 +1278,8 @@
       }
       const x = await window.FamiGate.api("/api/door", key, { timeout: 20000 });
       if (!x.res.ok || !x.j) {
-        statusEl.textContent = "維護中,請5分鐘後再試";
+        if (statusEl) statusEl.textContent = "維護中,請5分鐘後再試";
+        scheduleReconnect();
         return;
       }
       if (x.j.kind === "invite") {
@@ -1281,13 +1306,22 @@
       window.__famiPendingRead = null;
       if (pending && pending.book) openSaved(pending);
       await loadShelf(true);
+      if (lastShelf) ready = true;
+      else scheduleReconnect();
       if (typeof navigator.standalone === "boolean" && !navigator.standalone) {
         const seen = localStorage.getItem("famibook.installed");
         if (!seen && homeInstall) homeInstall.hidden = false;
       }
     } catch (e) {
-      if (lastShelf) return;
-      statusEl.textContent = "維護中,請5分鐘後再試";
+      if (lastShelf) {
+        ready = true;
+        setBoot(false, "");
+        return;
+      }
+      if (!feedBookTiles().length && statusEl) statusEl.textContent = "維護中,請5分鐘後再試";
+      scheduleReconnect();
+    } finally {
+      booting = false;
     }
   }
 
