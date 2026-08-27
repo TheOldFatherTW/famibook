@@ -1235,11 +1235,15 @@
     });
     btn.addEventListener("pointerup", clearPress);
     btn.addEventListener("pointercancel", clearPress);
+    ["contextmenu", "selectstart", "dragstart"].forEach(function (name) {
+      btn.addEventListener(name, function (ev) {
+        ev.preventDefault();
+      }, true);
+    });
     btn.addEventListener("click", function (ev) {
       if (fromHold) {
         ev.preventDefault();
         ev.stopImmediatePropagation();
-        fromHold = false;
         return;
       }
       if (selectMode) {
