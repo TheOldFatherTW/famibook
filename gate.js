@@ -58,12 +58,50 @@
   function bindKeyboard() {
     const vv = window.visualViewport;
     if (!vv) return;
+    let painted = -1;
+    let kbOn = false;
+    let lastHeight = -1;
+    let lastTop = -1;
     function apply() {
-      const kb = Math.max(0, window.innerHeight - vv.height);
-      document.documentElement.style.setProperty("--kb", kb + "px");
-      document.documentElement.classList.toggle("kb-up", kb > 80);
+      const lift = Math.max(0, window.innerHeight - vv.height);
+      const height = Math.round(vv.height);
+      const top = Math.round(vv.offsetTop);
+      if (Math.abs(height - lastHeight) >= 2 || lastHeight < 0) {
+        lastHeight = height;
+        document.documentElement.style.setProperty("--vvh", height + "px");
+      }
+      if (Math.abs(top - lastTop) >= 2 || lastTop < 0) {
+        lastTop = top;
+        document.documentElement.style.setProperty("--vv-top", top + "px");
+      }
+      if (Math.abs(lift - painted) >= 8) {
+        painted = lift;
+        document.documentElement.style.setProperty("--kb", Math.round(lift) + "px");
+      }
+      if (lift > 100) kbOn = true;
+      else if (lift < 40) kbOn = false;
+      document.documentElement.classList.toggle("kb-up", kbOn);
+    }
+    function fieldCovered(el) {
+      if (!el || !el.getBoundingClientRect) return false;
+      const r = el.getBoundingClientRect();
+      const top = vv.offsetTop;
+      const bottom = vv.offsetTop + vv.height;
+      return r.top < top + 8 || r.bottom > bottom - 8;
+    }
+    function reveal() {
+      const focused = document.activeElement;
+      if (!focused || (focused.tagName !== "INPUT" && focused.tagName !== "TEXTAREA")) return;
+      if (!fieldCovered(focused) || !focused.scrollIntoView) return;
+      focused.scrollIntoView({ block: "nearest" });
     }
     vv.addEventListener("resize", apply);
+    window.addEventListener("focusin", function () {
+      apply();
+      window.requestAnimationFrame(function () {
+        window.requestAnimationFrame(reveal);
+      });
+    });
     apply();
   }
 
