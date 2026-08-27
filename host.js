@@ -135,7 +135,6 @@
     menu.querySelectorAll("[data-host-adv]").forEach(function (n) { n.remove(); });
     const head = [];
     head.push(gearBtn(MAG, "找書", "find", openFind));
-    head.push(gearBtn(PLUS, "新增…", "plus", openPlus));
     const first = menu.firstChild;
     head.forEach(function (row) { menu.insertBefore(row, first); });
     const books = pickedItems().filter(function (it) {

@@ -307,9 +307,7 @@ button.apple-next path { fill: none; stroke: #fff; stroke-width: 2.4; stroke-lin
   background-size: 240% 240%, 320% 320%;
   background-position: 10% 40%, 80% 20%;
   mix-blend-mode: color-dodge;
-  transform: rotateX(var(--foil-rx, 0deg)) rotateY(var(--foil-ry, 0deg));
-  transform-style: preserve-3d;
-  will-change: transform, background-position;
+  will-change: background-position;
 }
 .cab-foil::after {
   content: "";
