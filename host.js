@@ -1226,7 +1226,8 @@
       press = window.setTimeout(function () {
         press = 0;
         fromHold = true;
-        enterSelect(item.id);
+        if (selectMode) togglePick(item.id);
+        else enterSelect(item.id);
       }, 400);
     });
     btn.addEventListener("pointermove", function (ev) {
