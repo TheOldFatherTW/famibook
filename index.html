@@ -5,6 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
 <script>
 (function () {
+  function bounceToReader() {
+    try {
+      var raw = sessionStorage.getItem("famibook.reading");
+      if (!raw) return false;
+      var data = JSON.parse(raw);
+      if (!data || !data.book) return false;
+      var q = new URLSearchParams();
+      q.set("book", data.book);
+      if (data.k) q.set("k", data.k);
+      if (data.end) q.set("end", data.end);
+      var pin = "./read.html?" + q.toString();
+      if (data.k) pin += "#k=" + encodeURIComponent(data.k);
+      location.replace(pin);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  bounceToReader();
+  window.addEventListener("pageshow", function (e) {
+    if (e.persisted) bounceToReader();
+  });
+})();
+</script>
+<script>
+(function () {
   function stopZoom(ev) { ev.preventDefault(); }
   document.addEventListener("gesturestart", stopZoom, { passive: false });
   document.addEventListener("gesturechange", stopZoom, { passive: false });

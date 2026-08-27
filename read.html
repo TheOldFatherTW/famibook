@@ -51,14 +51,28 @@ window.FAMI_WEB_READER = true;
       history.replaceState({}, "", pin);
     }
   }
-  // Edge swipe-back must not dump the reader to the bookshelf.
-  // Explicit 返回 still uses location.href.
+  // One dummy is not enough: two edge-swipes in a row pop through to the shelf.
   window.__famiReaderStay = true;
   function stayInReader() {
-    try { history.pushState({ famiReader: 1 }, "", location.href); } catch (e) {}
+    try {
+      history.pushState({ famiReader: 1 }, "", location.href);
+      history.pushState({ famiReader: 1 }, "", location.href);
+      history.pushState({ famiReader: 1 }, "", location.href);
+    } catch (e) {}
   }
   stayInReader();
   window.addEventListener("popstate", stayInReader);
+  window.addEventListener("pageshow", stayInReader);
+  var bookId = q.get("book") || "";
+  if (bookId) {
+    try {
+      sessionStorage.setItem("famibook.reading", JSON.stringify({
+        book: bookId,
+        k: token || "",
+        end: q.get("end") || ""
+      }));
+    } catch (e) {}
+  }
   var origin = String(window.VAULT_ORIGIN || "").replace(/\/$/, "");
   if (origin) {
     var pre = document.createElement("link");
@@ -74,7 +88,7 @@ window.FAMI_WEB_READER = true;
 })();
 </script>
 <link rel="stylesheet" href="./app.css?v=20"/>
-<link rel="stylesheet" href="./read.css?v=10"/>
+<link rel="stylesheet" href="./read.css?v=11"/>
 </head>
 <body class="manga lightTheme famiWeb">
 <div id="loaderContainer">
@@ -217,7 +231,7 @@ window.FAMI_WEB_READER = true;
     return;
   }
   var s = document.createElement("script");
-  s.src = origin + "/static/reader.js?v=17";
+  s.src = origin + "/static/reader.js?v=18";
   s.async = false;
   document.body.appendChild(s);
 })();

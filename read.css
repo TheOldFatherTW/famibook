@@ -19,7 +19,7 @@ html, body.famiWeb {
     "Microsoft JhengHei", sans-serif !important;
   font-weight: 400 !important;
   letter-spacing: 0 !important;
-  touch-action: manipulation;
+  touch-action: none;
   overscroll-behavior: none;
   overscroll-behavior-x: none;
   -webkit-touch-callout: none;
@@ -255,6 +255,10 @@ body.famiWeb .slider {
   height: 3px;
   border-radius: 999px;
   background: var(--line);
+  touch-action: pan-x;
+}
+body.famiWeb #pageSlider {
+  touch-action: pan-x;
 }
 body.famiWeb .slider::-webkit-slider-thumb {
   width: 14px;
