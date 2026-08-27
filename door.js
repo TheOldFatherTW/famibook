@@ -530,6 +530,13 @@
       + "#k=" + encodeURIComponent(token));
   }
 
+  function canOpenReader(item) {
+    if (!item || item.kind === "folder" || item.kind === "org" || item.kind === "job") return false;
+    if (item.has_pages === true || item.readable === true) return true;
+    if (hostOn()) return false;
+    return true;
+  }
+
   function thumbUrl(item) {
     const bid = item.cover_book || item.id;
     return window.FamiGate.origin() + "/thumb?book=" + encodeURIComponent(bid)
@@ -752,17 +759,18 @@
     }
     btn.addEventListener("click", function (ev) {
       ev.preventDefault();
-      if (item.kind === "folder" || item.kind === "org") {
-        cwd = item.id;
+      const current = catalog[btn.dataset.id] || item;
+      if (current.kind === "folder" || current.kind === "org") {
+        cwd = current.id;
         loadShelf(true);
         return;
       }
-      if (item.kind === "job") return;
-      if (hostOn() && window.FamiHost && window.FamiHost.onTileClick && window.FamiHost.onTileClick(item)) {
+      if (current.kind === "job") return;
+      if (hostOn() && window.FamiHost && window.FamiHost.onTileClick && window.FamiHost.onTileClick(current)) {
         return;
       }
-      if (!item.has_pages) return;
-      openReader(item);
+      if (!canOpenReader(current)) return;
+      openReader(current);
     });
     return btn;
   }
