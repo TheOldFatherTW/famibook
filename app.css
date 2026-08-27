@@ -662,16 +662,21 @@ html.has-rail .feed {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 3px 6px;
-  background: #000;
-  color: #d62976;
   pointer-events: none;
+  color: #d62976;
+  filter: drop-shadow(0 1px 1.2px rgba(0, 0, 0, 0.33));
 }
 .tile-heart svg {
   width: 22px;
   height: 22px;
   display: block;
+  overflow: visible;
   fill: currentColor;
+  stroke: #fff;
+  stroke-width: 3.2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  paint-order: stroke fill;
 }
 .tile.is-ghost {
   opacity: 0.22;
