@@ -51,13 +51,21 @@ window.FAMI_WEB_READER = true;
       history.replaceState({}, "", pin);
     }
   }
-  // One dummy is not enough: two edge-swipes in a row pop through to the shelf.
+  // One dummy is not enough, and identical URLs get merged so one swipe
+  // still pops through to the shelf. Unique hashes keep each pad distinct.
   window.__famiReaderStay = true;
+  window.__famiStaySeq = 0;
+  function stayUrl(n) {
+    var raw = (location.hash || "").replace(/^#/, "").replace(/&?stay=\d+/g, "");
+    if (raw.slice(-1) === "&") raw = raw.slice(0, -1);
+    return location.pathname + location.search + "#" + (raw ? raw + "&stay=" + n : "stay=" + n);
+  }
   function stayInReader() {
     try {
-      history.pushState({ famiReader: 1 }, "", location.href);
-      history.pushState({ famiReader: 1 }, "", location.href);
-      history.pushState({ famiReader: 1 }, "", location.href);
+      window.__famiStaySeq += 1;
+      history.pushState({ famiReader: 1, n: window.__famiStaySeq }, "", stayUrl(window.__famiStaySeq));
+      window.__famiStaySeq += 1;
+      history.pushState({ famiReader: 1, n: window.__famiStaySeq }, "", stayUrl(window.__famiStaySeq));
     } catch (e) {}
   }
   stayInReader();
@@ -88,7 +96,7 @@ window.FAMI_WEB_READER = true;
 })();
 </script>
 <link rel="stylesheet" href="./app.css?v=20"/>
-<link rel="stylesheet" href="./read.css?v=11"/>
+<link rel="stylesheet" href="./read.css?v=12"/>
 </head>
 <body class="manga lightTheme famiWeb">
 <div id="loaderContainer">
@@ -231,7 +239,7 @@ window.FAMI_WEB_READER = true;
     return;
   }
   var s = document.createElement("script");
-  s.src = origin + "/static/reader.js?v=18";
+  s.src = origin + "/static/reader.js?v=19";
   s.async = false;
   document.body.appendChild(s);
 })();

@@ -475,10 +475,10 @@
     if (!item || item.kind === "folder") return;
     const token = key;
     const end = item.finished ? "&end=1" : "";
-    location.href = "./read.html?book=" + encodeURIComponent(item.id)
+    location.replace("./read.html?book=" + encodeURIComponent(item.id)
       + "&k=" + encodeURIComponent(token)
       + end
-      + "#k=" + encodeURIComponent(token);
+      + "#k=" + encodeURIComponent(token));
   }
 
   function thumbUrl(item) {
