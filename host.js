@@ -6,7 +6,7 @@
   const FOLDER =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h6l2 2h8v10H4z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
   const HEART =
-    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.2 20s-6.7-4.2-8.6-8.1C2.2 9.1 3.4 6 6.6 6c1.8 0 3 1.1 3.6 2.2C10.8 7.1 12 6 13.8 6c3.2 0 4.4 3.1 3 5.9-1.9 3.9-8.6 8.1-8.6 8.1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.2 20C10.5 18.4 5.5 15.8 3.6 11.9C2.2 9.1 3.4 6 6.6 6c1.8 0 3 1.1 3.6 2.2C10.8 7.1 12 6 13.8 6c3.2 0 4.4 3.1 3 5.9C15.4 15.8 13.9 18.4 12.2 20Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
   const TEXT =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10v15H7z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9.5 8h5M9.5 12h5M9.5 16h3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   const PDF =
