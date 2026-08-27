@@ -21,6 +21,7 @@
   const shelfBack = document.getElementById("shelf-back");
   let settingsWrap = null;
   let settingsCatch = null;
+  let backdropUrl = "";
   const GEAR =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 3.8l.6-1.3h3.6l.6 1.3 1.6.7 1.4-.5 2.5 2.5-.5 1.4.7 1.6 1.3.6v3.6l-1.3.6-.7 1.6.5 1.4-2.5 2.5-1.4-.5-1.6.7-.6 1.3h-3.6l-.6-1.3-1.6-.7-1.4.5-2.5-2.5.5-1.4-.7-1.6-1.3-.6v-3.6l1.3-.6.7-1.6-.5-1.4L6.6 4l1.4.5 1.6-.7z" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linejoin="round"/><circle cx="12" cy="11.9" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
   const CAMERA =
@@ -109,18 +110,78 @@
     stageBg.style.height = Math.round(end) + "px";
     stageBg.style.webkitMaskImage = fade;
     stageBg.style.maskImage = fade;
+    if (backdropUrl) tuneNameOnBackdrop(backdropUrl);
   }
 
   function paintStage(reader) {
-    if (!stageBg) return;
+    if (!stageBg || !hall) return;
     if (reader && reader.has_backdrop && reader.id) {
-      stageBg.style.backgroundImage = "url(" + window.FamiGate.origin() + "/backdrop?person=" + encodeURIComponent(reader.id) + "&k=" + encodeURIComponent(key) + "&r=" + (reader.backdrop_rev || 0) + ")";
+      backdropUrl = window.FamiGate.origin() + "/backdrop?person=" + encodeURIComponent(reader.id) + "&k=" + encodeURIComponent(key) + "&r=" + (reader.backdrop_rev || 0);
+      hall.classList.add("has-backdrop");
+      if (readerName) {
+        readerName.classList.remove("is-on-light");
+        readerName.classList.add("is-on-dark");
+      }
+      stageBg.style.backgroundImage = "url(" + backdropUrl + ")";
       stageBg.hidden = false;
       requestAnimationFrame(layoutStage);
     } else {
+      backdropUrl = "";
+      hall.classList.remove("has-backdrop");
+      if (readerName) readerName.classList.remove("is-on-light", "is-on-dark");
       stageBg.hidden = true;
       stageBg.style.backgroundImage = "";
     }
+  }
+
+  function lumaBehindName(img, stage, nameEl) {
+    const stageBox = stage.getBoundingClientRect();
+    const nameBox = nameEl.getBoundingClientRect();
+    const iw = img.naturalWidth;
+    const ih = img.naturalHeight;
+    if (stageBox.width < 8 || nameBox.height < 4 || !iw || !ih) return null;
+    const scale = Math.max(stageBox.width / iw, stageBox.height / ih);
+    const ox = (stageBox.width - iw * scale) / 2;
+    const pad = 10;
+    const sx = (nameBox.left - stageBox.left - ox - pad) / scale;
+    const sy = (nameBox.top - stageBox.top - pad) / scale;
+    const sw = (nameBox.width + pad * 2) / scale;
+    const sh = (nameBox.height + pad * 2) / scale;
+    const x = Math.max(0, Math.min(iw - 1, sx));
+    const y = Math.max(0, Math.min(ih - 1, sy));
+    const w = Math.max(1, Math.min(iw - x, sw));
+    const h = Math.max(1, Math.min(ih - y, sh));
+    const canvas = document.createElement("canvas");
+    canvas.width = 24;
+    canvas.height = 12;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    try {
+      ctx.drawImage(img, x, y, w, h, 0, 0, 24, 12);
+      const data = ctx.getImageData(0, 0, 24, 12).data;
+      let sum = 0;
+      const n = data.length / 4;
+      for (let i = 0; i < data.length; i += 4) {
+        sum += (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255;
+      }
+      return sum / n;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function tuneNameOnBackdrop(url) {
+    if (!readerName || !stageBg || stageBg.hidden || !url) return;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = function () {
+      if (url !== backdropUrl) return;
+      const luma = lumaBehindName(img, stageBg, readerName);
+      const light = luma != null && luma >= 0.65;
+      readerName.classList.toggle("is-on-light", light);
+      readerName.classList.toggle("is-on-dark", !light);
+    };
+    img.src = url;
   }
 
   function insButton(className, svg, label) {
