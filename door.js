@@ -66,7 +66,6 @@
   const MODES = [
     ["title", "書籍"],
     ["manga", "漫畫"],
-    ["research", "研究"],
   ];
   const HEART =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20C10.5 18.4 7.3 15.8 5.4 11.9C4 9.1 5.2 6 8.4 6c1.8 0 3 1.1 3.6 2.2C12.6 7.1 13.8 6 15.6 6c3.2 0 4.4 3.1 3 5.9C16.7 15.8 13.5 18.4 12 20Z"/></svg>';
@@ -404,7 +403,10 @@
       if (!isGm) return;
       hostView = !hostView;
       try { localStorage.setItem("famibook.hostView", hostView ? "1" : "0"); } catch (e) {}
-      if (!hostOn() && window.FamiHost && window.FamiHost.clearSelect) window.FamiHost.clearSelect();
+      if (!hostOn()) {
+        if (hostTab === "jobs" || hostTab === "research") hostTab = "title";
+        if (window.FamiHost && window.FamiHost.clearSelect) window.FamiHost.clearSelect();
+      }
       paintHostChrome();
       paintBack();
       loadShelf(true);
@@ -520,14 +522,199 @@
     return String(a);
   }
 
-  function openReader(item) {
+  let prefetchCtl = null;
+  let readerOpen = false;
+  let readerStaySeq = 0;
+  let readerReadyTimer = 0;
+  let hintTimer = 0;
+  let bridgeBackAt = 0;
+
+  function tileCover(item) {
+    if (!feed || !item || !item.id) return "";
+    const tiles = feed.querySelectorAll(".tile");
+    for (let i = 0; i < tiles.length; i++) {
+      if (tiles[i].dataset.id !== item.id) continue;
+      const img = tiles[i].querySelector("img");
+      if (img && (img.currentSrc || img.src)) return img.currentSrc || img.src;
+    }
+    return "";
+  }
+
+  function readingUrl(item, extra) {
+    const q = new URLSearchParams();
+    q.set("book", item.id);
+    q.set("k", key);
+    const end = (extra && extra.end) || (item.finished ? "1" : "");
+    if (end) q.set("end", end);
+    return "./read.html?" + q.toString() + "#k=" + encodeURIComponent(key);
+  }
+
+  function rememberReading(item, cover) {
+    try {
+      sessionStorage.setItem("famibook.reading", JSON.stringify({
+        book: item.id,
+        k: key,
+        end: item.finished ? "1" : "",
+        cover: cover || "",
+      }));
+    } catch (e) {}
+  }
+
+  function stayOverlayUrl(n) {
+    const raw = (location.hash || "").replace(/^#/, "").replace(/&?stay=\d+/g, "").replace(/&$/, "");
+    return location.pathname + location.search + "#" + (raw ? raw + "&stay=" + n : "stay=" + n);
+  }
+
+  function cleanOverlayUrl() {
+    const raw = (location.hash || "").replace(/^#/, "").replace(/&?stay=\d+/g, "").replace(/&$/, "");
+    return location.pathname + location.search + (raw ? "#" + raw : "");
+  }
+
+  function padOverlay() {
+    if (!readerOpen) return;
+    try {
+      readerStaySeq += 1;
+      history.pushState({ famiReader: 1, n: readerStaySeq }, "", stayOverlayUrl(readerStaySeq));
+      readerStaySeq += 1;
+      history.pushState({ famiReader: 1, n: readerStaySeq }, "", stayOverlayUrl(readerStaySeq));
+    } catch (e) {}
+  }
+
+  function closeReader() {
+    const layer = document.getElementById("reader-layer");
+    const frame = document.getElementById("reader-frame");
+    readerOpen = false;
+    document.documentElement.classList.remove("is-reading");
+    if (layer) {
+      layer.hidden = true;
+      layer.classList.remove("is-live");
+    }
+    if (frame) {
+      try { frame.src = "about:blank"; } catch (e) {}
+    }
+    try { sessionStorage.removeItem("famibook.reading"); } catch (e) {}
+    try { history.replaceState({}, "", cleanOverlayUrl()); } catch (e) {}
+    window.clearTimeout(readerReadyTimer);
+    window.clearTimeout(hintTimer);
+  }
+
+  function showReaderLive() {
+    const layer = document.getElementById("reader-layer");
+    if (!layer || !readerOpen) return;
+    layer.classList.add("is-live");
+    window.clearTimeout(readerReadyTimer);
+    window.clearTimeout(hintTimer);
+    const hint = document.getElementById("reader-hint");
+    if (hint) hint.hidden = true;
+  }
+
+  function prefetchReader(item) {
+    if (!item || !item.id || !key) return;
+    const origin = window.FamiGate.origin();
+    if (!origin) return;
+    if (prefetchCtl && prefetchCtl._book === item.id) return;
+    if (prefetchCtl) prefetchCtl.abort();
+    prefetchCtl = new AbortController();
+    prefetchCtl._book = item.id;
+    const signal = prefetchCtl.signal;
+    const bid = encodeURIComponent(item.id);
+    const tok = encodeURIComponent(key);
+    [
+      "./read.html",
+      "./read.css?v=14",
+      origin + "/static/reader.js?v=25",
+      origin + "/static/css/global.css?v=20",
+      origin + "/static/css/read.css?v=20",
+      origin + "/static/css/navImage.css?v=20",
+      origin + "/static/css/navMenu.css?v=20",
+      origin + "/static/css/config.css?v=20",
+      origin + "/static/css/mybook.css?v=20",
+    ].forEach(function (url) {
+      fetch(url, { signal: signal, mode: "cors", credentials: "omit" }).catch(function () {});
+    });
+    const auth = "?book=" + bid + "&k=" + tok;
+    Promise.all([
+      fetch(origin + "/api/book" + auth, { signal: signal, mode: "cors" }).then(function (r) { return r.json(); }),
+      fetch(origin + "/api/prefs" + auth, { signal: signal, mode: "cors" }).then(function (r) { return r.json(); }).catch(function () { return {}; }),
+    ]).then(function (pair) {
+      const book = pair[0] || {};
+      const prefs = pair[1] || {};
+      const leaves = book.leaves || [];
+      if (!leaves.length) return;
+      const posKey = book.positionKey || item.id;
+      let idx = 0;
+      if (prefs.finished && prefs.finished[posKey]) {
+        idx = Math.max(0, leaves.length - 1);
+      } else {
+        const saved = prefs.positions && prefs.positions[posKey];
+        if (Number.isFinite(saved)) idx = Math.max(0, Math.min(saved, leaves.length - 1));
+      }
+      [leaves[idx], leaves[idx + 1], leaves[idx - 1]].forEach(function (leaf) {
+        if (!leaf || !leaf.src) return;
+        const im = new Image();
+        im.decoding = "async";
+        im.src = origin + "/pages/" + encodeURIComponent(leaf.src) + "?book=" + bid + "&k=" + tok;
+      });
+    }).catch(function () {});
+  }
+
+  function openReader(item, opts) {
     if (!item || item.kind === "folder") return;
-    const token = key;
-    const end = item.finished ? "&end=1" : "";
-    location.replace("./read.html?book=" + encodeURIComponent(item.id)
-      + "&k=" + encodeURIComponent(token)
-      + end
-      + "#k=" + encodeURIComponent(token));
+    const layer = document.getElementById("reader-layer");
+    const frame = document.getElementById("reader-frame");
+    const coverEl = document.getElementById("reader-bridge-cover");
+    const hint = document.getElementById("reader-hint");
+    const bridge = document.getElementById("reader-bridge");
+    if (!layer || !frame) {
+      location.replace(readingUrl(item, opts));
+      return;
+    }
+    let cover = (opts && opts.cover) || tileCover(item);
+    if (!cover && item.has_cover) cover = thumbUrl(item);
+    if (coverEl) {
+      if (cover) {
+        coverEl.hidden = false;
+        coverEl.src = cover;
+      } else {
+        coverEl.removeAttribute("src");
+        coverEl.hidden = true;
+      }
+    }
+    if (bridge) bridge.classList.toggle("has-cover", !!cover);
+    if (hint) hint.hidden = true;
+    window.clearTimeout(hintTimer);
+    hintTimer = window.setTimeout(function () {
+      if (readerOpen && layer && !layer.classList.contains("is-live") && hint) hint.hidden = false;
+    }, 160);
+    rememberReading(item, cover);
+    document.documentElement.classList.add("is-reading");
+    layer.hidden = false;
+    layer.classList.remove("is-live");
+    const wasOpen = readerOpen;
+    readerOpen = true;
+    if (!wasOpen) padOverlay();
+    prefetchReader(item);
+    const url = readingUrl(item, opts);
+    try {
+      if (frame.getAttribute("src") === url && frame.contentWindow) {
+        frame.contentWindow.location.replace(url);
+      } else {
+        frame.src = url;
+      }
+    } catch (e) {
+      frame.src = url;
+    }
+    window.clearTimeout(readerReadyTimer);
+    readerReadyTimer = window.setTimeout(showReaderLive, 15000);
+  }
+
+  function openSaved(data) {
+    if (!data || !data.book) return;
+    openReader({
+      id: data.book,
+      finished: data.end === "1",
+      has_cover: !!data.cover,
+    }, { end: data.end, cover: data.cover });
   }
 
   function canOpenReader(item) {
@@ -754,9 +941,16 @@
       pct.hidden = true;
     }
     btn.appendChild(pct);
-    if (window.FamiHost && window.FamiHost.bindTile && hostOn()) {
+    if (window.FamiHost && window.FamiHost.bindTile) {
       window.FamiHost.bindTile(btn, item);
     }
+    btn.addEventListener("pointerdown", function (ev) {
+      if (ev.button && ev.button !== 0) return;
+      const current = catalog[btn.dataset.id] || item;
+      if (!canOpenReader(current)) return;
+      if (window.FamiHost && window.FamiHost.isSelect && window.FamiHost.isSelect()) return;
+      prefetchReader(current);
+    });
     btn.addEventListener("click", function (ev) {
       ev.preventDefault();
       const current = catalog[btn.dataset.id] || item;
@@ -778,16 +972,8 @@
   function paintBack() {
     const inFolder = !!cwd;
     const modeBar = document.getElementById("mode-bar");
-    if (hostOn()) {
-      if (tagBoard) tagBoard.hidden = false;
-      if (modeBar) modeBar.hidden = false;
-      if (shelfBack) shelfBack.hidden = !inFolder;
-      paintHostChrome();
-      layoutStage();
-      return;
-    }
-    if (tagBoard) tagBoard.hidden = !inFolder;
-    if (modeBar) modeBar.hidden = true;
+    if (tagBoard) tagBoard.hidden = false;
+    if (modeBar) modeBar.hidden = false;
     if (shelfBack) shelfBack.hidden = !inFolder;
     paintHostChrome();
     layoutStage();
@@ -833,7 +1019,7 @@
   }
 
   function viewKey() {
-    return (hostOn() ? (hostTab || "title") : "list") + "|" + (cwd || "") + "|" + (hostQuery || "");
+    return (hostTab || "title") + "|" + (cwd || "") + "|" + (hostQuery || "");
   }
 
   function feedBookTiles() {
@@ -920,16 +1106,19 @@
     paintProgress();
     paintBack();
     layoutStage();
-    if (hostOn() && window.FamiHost && window.FamiHost.afterPaint) window.FamiHost.afterPaint();
+    if (window.FamiHost && window.FamiHost.afterPaint) window.FamiHost.afterPaint();
     return true;
   }
 
   function prefetchOtherTabs() {
-    if (!hostOn() || cwd || prefetchOnce) return;
+    if (cwd || prefetchOnce) return;
     prefetchOnce = true;
-    ["title", "research", "manga", "fav"].forEach(function (tab) {
+    const tabs = hostOn() ? ["title", "research", "manga", "fav"] : ["title", "manga", "fav"];
+    tabs.forEach(function (tab) {
       if (tab === hostTab) return;
-      const path = "/api/host/shelf?offset=0&limit=" + LIMIT + "&tab=" + encodeURIComponent(tab);
+      const path = hostOn()
+        ? "/api/host/shelf?offset=0&limit=" + LIMIT + "&tab=" + encodeURIComponent(tab)
+        : "/api/shelf?view=list&offset=0&limit=" + LIMIT + "&tab=" + encodeURIComponent(tab);
       window.FamiGate.api(path, key, { timeout: 20000 }).then(function (x) {
         if (!x || !x.j || !x.j.items) return;
         writeJsonSnap(tab + "|", {
@@ -971,11 +1160,11 @@
     loadingMore = true;
     const reqOffset = reset ? 0 : offset;
     const folder = cwd ? "&cwd=" + encodeURIComponent(cwd) : "";
-      const tab = hostOn() ? "&tab=" + encodeURIComponent(hostTab || "title") : "";
+    const tabQ = "&tab=" + encodeURIComponent(hostTab || "title");
     const q = hostOn() && hostQuery ? "&q=" + encodeURIComponent(hostQuery) : "";
     const path = hostOn()
-      ? "/api/host/shelf?offset=" + reqOffset + "&limit=" + LIMIT + folder + tab + q
-      : "/api/shelf?view=list&offset=" + reqOffset + "&limit=" + LIMIT + folder;
+      ? "/api/host/shelf?offset=" + reqOffset + "&limit=" + LIMIT + folder + tabQ + q
+      : "/api/shelf?view=list&offset=" + reqOffset + "&limit=" + LIMIT + folder + tabQ;
     try {
       const x = await window.FamiGate.api(path, key, { timeout: 20000 });
       if (gen !== shelfGen) return;
@@ -993,6 +1182,7 @@
         rememberSnap();
         layoutStage();
         window.setTimeout(prefetchOtherTabs, 700);
+        if (window.FamiHost && window.FamiHost.afterPaint) window.FamiHost.afterPaint();
         return;
       }
       if (reset) resetFeed();
@@ -1002,7 +1192,7 @@
       offset += fresh.length;
       paintProgress();
       rememberSnap();
-      if (hostOn() && window.FamiHost && window.FamiHost.afterPaint) window.FamiHost.afterPaint();
+      if (window.FamiHost && window.FamiHost.afterPaint) window.FamiHost.afterPaint();
       layoutStage();
       if (reset) window.setTimeout(prefetchOtherTabs, 700);
     } finally {
@@ -1062,13 +1252,16 @@
       window.FamiGate.pinKey(key);
       isGm = !!(x.j.gm || (x.j.reader && x.j.reader.gm));
       renderMe(x.j.reader);
-      if (isGm) ensureModes();
+      ensureModes();
       paintHostChrome();
-      if (isGm && window.FamiHost) window.FamiHost.attach(key);
+      if (window.FamiHost) window.FamiHost.attach(key);
       setBoot(false, "");
       if (statusEl) statusEl.textContent = "";
       cwd = "";
       parentCwd = "";
+      const pending = window.__famiPendingRead;
+      window.__famiPendingRead = null;
+      if (pending && pending.book) openSaved(pending);
       await loadShelf(true);
       if (typeof navigator.standalone === "boolean" && !navigator.standalone) {
         const seen = localStorage.getItem("famibook.installed");
@@ -1206,6 +1399,43 @@
     loadShelf(true);
   });
 
+  const readerBack = document.getElementById("reader-back");
+  if (readerBack) {
+    readerBack.addEventListener("pointerup", function (ev) {
+      if (ev.pointerType === "mouse" && ev.button !== 0) return;
+      ev.preventDefault();
+      if (Date.now() - bridgeBackAt < 400) return;
+      bridgeBackAt = Date.now();
+      closeReader();
+    });
+    readerBack.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      if (Date.now() - bridgeBackAt < 400) return;
+      bridgeBackAt = Date.now();
+      closeReader();
+    });
+  }
+
+  window.addEventListener("message", function (ev) {
+    if (ev.origin !== location.origin) return;
+    const kind = ev.data && ev.data.fami;
+    if (kind === "close-reader") closeReader();
+    else if (kind === "reader-ready") showReaderLive();
+    else if (kind === "reader-loading" && readerOpen) {
+      const layer = document.getElementById("reader-layer");
+      if (layer) layer.classList.remove("is-live");
+    }
+  });
+  window.addEventListener("popstate", function () {
+    if (readerOpen) {
+      padOverlay();
+      return;
+    }
+    if (/stay=\d+/.test(location.hash || "")) {
+      try { history.replaceState({}, "", cleanOverlayUrl()); } catch (e) {}
+    }
+  });
+
   scrubLegacySettings();
 
   window.FamiShelf = {
@@ -1217,12 +1447,16 @@
     hostOn: hostOn,
     resetFeed: resetFeed,
     remember: rememberSnap,
+    openSaved: openSaved,
+    closeReader: closeReader,
     appendTile: function (item, index) {
       if (!feed) return null;
       const el = tileEl(item, index || 0);
       feed.appendChild(el);
       return el;
     },
+    pickTab: pickTab,
+    closeSettings: closeSettings,
     setKind: function (kind) { hostTab = kind === "all" ? "title" : (kind || "title"); },
     setTab: function (tab) {
       hostTab = tab === "all" ? "title" : (tab || "title");

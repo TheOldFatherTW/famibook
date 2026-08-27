@@ -11,14 +11,12 @@
       if (!raw) return false;
       var data = JSON.parse(raw);
       if (!data || !data.book) return false;
-      var q = new URLSearchParams();
-      q.set("book", data.book);
-      if (data.k) q.set("k", data.k);
-      if (data.end) q.set("end", data.end);
-      var pin = "./read.html?" + q.toString();
-      if (data.k) pin += "#k=" + encodeURIComponent(data.k);
-      location.replace(pin);
-      return true;
+      window.__famiPendingRead = data;
+      if (window.FamiShelf && window.FamiShelf.openSaved) {
+        window.FamiShelf.openSaved(data);
+        return true;
+      }
+      return false;
     } catch (e) {
       return false;
     }
@@ -50,7 +48,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./app.css?v=35"/>
+<link rel="stylesheet" href="./app.css?v=36"/>
 <script src="./config.js?v=1787662694"></script>
 <script>
 (function () {
@@ -191,9 +189,25 @@
   <p>請點底部分享，再選加入主畫面</p>
   <button type="button" class="invite-go" id="home-installed">我已加入</button>
 </div>
+<div id="reader-layer" hidden>
+  <div id="reader-bridge">
+    <img id="reader-bridge-cover" alt="" hidden/>
+    <div id="reader-hint" hidden>
+      <div class="thinking-five" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+      <p class="read-wait">打開書本</p>
+    </div>
+  </div>
+  <button type="button" class="ins-icon nav-back" id="reader-back" aria-label="返回書櫃">
+    <span class="ins-ring"></span>
+    <span class="ins-face">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5L8 12l6.5 6.5M8.5 12H20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+  </button>
+  <iframe id="reader-frame" title="閱讀器" src="about:blank"></iframe>
+</div>
 <script src="./lissajous.js?v=2"></script>
 <script src="./gate.js?v=2"></script>
-<script src="./host.js?v=14"></script>
-<script src="./door.js?v=31"></script>
+<script src="./host.js?v=15"></script>
+<script src="./door.js?v=32"></script>
 </body>
 </html>

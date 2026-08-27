@@ -68,16 +68,25 @@ window.FAMI_WEB_READER = true;
       history.pushState({ famiReader: 1, n: window.__famiStaySeq }, "", stayUrl(window.__famiStaySeq));
     } catch (e) {}
   }
-  stayInReader();
-  window.addEventListener("popstate", stayInReader);
-  window.addEventListener("pageshow", stayInReader);
+  var embedded = false;
+  try { embedded = window.parent && window.parent !== window; } catch (e) {}
+  if (!embedded) {
+    stayInReader();
+    window.addEventListener("popstate", stayInReader);
+    window.addEventListener("pageshow", stayInReader);
+  } else {
+    try { window.parent.postMessage({ fami: "reader-loading" }, location.origin); } catch (e) {}
+  }
   var bookId = q.get("book") || "";
   if (bookId) {
     try {
+      var prev = {};
+      try { prev = JSON.parse(sessionStorage.getItem("famibook.reading") || "{}") || {}; } catch (e) {}
       sessionStorage.setItem("famibook.reading", JSON.stringify({
         book: bookId,
         k: token || "",
-        end: q.get("end") || ""
+        end: q.get("end") || "",
+        cover: prev.cover || ""
       }));
     } catch (e) {}
   }
@@ -239,7 +248,7 @@ window.FAMI_WEB_READER = true;
     return;
   }
   var s = document.createElement("script");
-  s.src = origin + "/static/reader.js?v=24";
+  s.src = origin + "/static/reader.js?v=25";
   s.async = false;
   document.body.appendChild(s);
 })();
