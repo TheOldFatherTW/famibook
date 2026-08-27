@@ -600,19 +600,6 @@ html.has-rail .feed {
   box-shadow: none;
   background: linear-gradient(120deg, #fa7e1e 0%, #d62976 48%, #962fbf 100%);
 }
-.mode-btn.mode-heart {
-  padding: 8px 11px;
-  color: #d62976;
-}
-.mode-btn.mode-heart svg {
-  width: 16px;
-  height: 16px;
-  display: block;
-  fill: currentColor;
-}
-.mode-btn.mode-heart.is-on {
-  color: #fff;
-}
 .photo-rail {
   position: fixed;
   right: max(8px, env(safe-area-inset-right, 0px));

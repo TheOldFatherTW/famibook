@@ -468,7 +468,7 @@
       if (reader.has_cover) {
         faceImg.src = window.FamiGate.origin() + "/cover?person=" + encodeURIComponent(reader.id) + "&k=" + encodeURIComponent(key) + "&r=" + (reader.cover_rev || 0);
       } else {
-        faceImg.src = "./face-default.jpg";
+        faceImg.src = "./face-default.jpg?v=2";
       }
       faceImg.hidden = false;
     }
@@ -814,10 +814,9 @@
     bar.dataset.ready = "1";
     const heart = document.createElement("button");
     heart.type = "button";
-    heart.className = "mode-btn mode-heart" + (hostTab === "fav" ? " is-on" : "");
+    heart.className = "mode-btn" + (hostTab === "fav" ? " is-on" : "");
     heart.dataset.mode = "fav";
-    heart.setAttribute("aria-label", "愛心");
-    heart.innerHTML = HEART;
+    heart.textContent = "最愛";
     heart.addEventListener("click", function () { pickTab("fav"); });
     bar.appendChild(heart);
     MODES.forEach(function (pair) {
