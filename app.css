@@ -735,12 +735,32 @@ html.has-rail .feed {
   animation: tag-apply-spin 2.4s linear infinite;
   pointer-events: none;
 }
+.tile.is-run::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: var(--apply-ring);
+  background: #efe8ea;
+  pointer-events: none;
+}
 .tile.is-run img {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 .tile.is-run .tile-shield {
   inset: var(--apply-ring);
+}
+.tile.is-job.is-run .tile-shield {
+  box-shadow: none;
+}
+.tile.is-run .tile-job-hud {
+  left: var(--apply-ring);
+  right: var(--apply-ring);
+  bottom: var(--apply-ring);
+}
+.tile.is-run .job-ctrl {
+  right: calc(6px + var(--apply-ring));
+  bottom: calc(6px + var(--apply-ring));
 }
 .tile img {
   width: 100%;

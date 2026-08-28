@@ -1036,6 +1036,7 @@
     if (item.state === "running") return JOB_LABEL[item.job_kind] || "進行中";
     if (item.state === "paused") return "已暫停";
     if (item.state === "error") return item.error || "失敗";
+    if (item.state === "queued" || item.state === "held") return "排隊中";
     return "尚未開始";
   }
 
@@ -1051,7 +1052,7 @@
       state: row.state,
       percent: row.percent,
       error: row.error || "",
-      has_cover: !!row.book,
+      has_cover: !!row.has_cover,
       has_pages: false,
       pinned: row.state === "running",
       favorite: false,
@@ -1063,6 +1064,11 @@
     el.classList.add("is-job");
     el.classList.toggle("is-run", item.state === "running");
     el.classList.toggle("is-pinned", item.state === "running");
+    const img = el.querySelector("img");
+    if (img && !item.has_cover) {
+      img.removeAttribute("src");
+      img.hidden = true;
+    }
     const badge = el.querySelector(".tile-pct");
     if (badge) badge.hidden = true;
     const leftover = el.querySelector(".tile-ring");

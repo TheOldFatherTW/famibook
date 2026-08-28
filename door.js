@@ -925,13 +925,18 @@
     btn.dataset.id = item.id;
     if (item.kind === "folder" || item.kind === "org") btn.dataset.kind = item.kind;
     if (item.pinned) btn.classList.add("is-pinned");
-    const img = document.createElement("img");
-    img.alt = item.title || "";
-    img.decoding = "async";
-    if (index < FIRST) img.loading = "eager";
-    btn.appendChild(img);
-    if (item.has_cover) watchThumb(img, item, index < FIRST);
-    else if (item.kind === "org") {
+    if (item.has_cover) {
+      const img = document.createElement("img");
+      img.alt = item.title || "";
+      img.decoding = "async";
+      if (index < FIRST) img.loading = "eager";
+      img.addEventListener("error", function () {
+        img.removeAttribute("src");
+        img.hidden = true;
+      });
+      btn.appendChild(img);
+      watchThumb(img, item, index < FIRST);
+    } else if (item.kind === "org") {
       const mark = document.createElement("span");
       mark.className = "tile-plus";
       mark.innerHTML = FOLDER_MARK;
