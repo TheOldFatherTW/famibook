@@ -830,7 +830,6 @@
         { key: "title", label: "書名" },
         { key: "series", label: "系列" },
         { key: "volume", label: "集號" },
-        { key: "url", label: "閱讀網址" },
       ];
     }
     if (kind === "title") return [{ key: "title", label: "書名" }];
@@ -952,7 +951,6 @@
         const id = x.j && x.j.id;
         const title = (x.j && x.j.title) || data.title;
         const extra = {};
-        if ((data.url || "").trim()) extra.reader_url = data.url.trim();
         return afterCreate(id).then(function () {
           return enqueue("capture", id, title, extra);
         }).then(function () { return x; });
