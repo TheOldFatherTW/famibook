@@ -9,8 +9,6 @@
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20C10.5 18.4 7.3 15.8 5.4 11.9C4 9.1 5.2 6 8.4 6c1.8 0 3 1.1 3.6 2.2C12.6 7.1 13.8 6 15.6 6c3.2 0 4.4 3.1 3 5.9C16.7 15.8 13.5 18.4 12 20Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
   const TEXT =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10v15H7z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9.5 8h5M9.5 12h5M9.5 16h3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
-  const PDF =
-    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.8h7l4 4v12.4H7z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14 3.8v4h4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
   const DESK =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="11" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 19h8M12 16v3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   const PAUSE =
@@ -170,18 +168,11 @@
     const books = pickedItems().filter(function (it) {
       return it && it.kind !== "org" && it.kind !== "job";
     });
-    if (books.length === 1) {
-      menu.appendChild(gearBtn(TEXT, "這本…", "this", function () {
-        openActFor(books[0]);
-      }));
-    }
+    // 封存：單本「這本…」操作卡、匯出 PDF、拍封面。enqueue("pdf"/"cover") 與工人仍在。
     const paged = pagedBooks();
     if (paged.length > 1) {
       menu.appendChild(gearBtn(TEXT, "文字", "text", function () {
         paged.forEach(function (it) { enqueue("generate", it.id, it.title); });
-      }));
-      menu.appendChild(gearBtn(PDF, "PDF", "pdf", function () {
-        paged.forEach(function (it) { enqueue("pdf", it.id, it.title); });
       }));
     }
     if (isDesktop() && books.length) {
@@ -522,139 +513,6 @@
     setTimeout(function () { input.focus(); }, 50);
   }
 
-  function onTileClick(item) {
-    if (!item || item.kind === "job" || item.kind === "folder" || item.kind === "org") return false;
-    if (item.has_pages) return false;
-    openActFor(item);
-    return true;
-  }
-
-  function openActFor(item) {
-    if (!item) return;
-    if (item.kind === "job") return;
-    form = null;
-    actItem = item;
-    if (item.kind === "org") {
-      openActTitle(item.title || "資料夾");
-      paintActActions(item);
-      return;
-    }
-    openActTitle(item.title || "操作");
-    paintActActions(item);
-  }
-
-  function actChip(label, fn) {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "tag-chip";
-    chip.textContent = label;
-    chip.addEventListener("click", fn);
-    return chip;
-  }
-
-  function paintActActions(item) {
-    const body = openActBody();
-    if (!body) return;
-    const box = document.createElement("div");
-    box.className = "tag-row";
-    const kind = item.kind || "";
-    if (kind === "org" || kind === "folder") {
-      box.appendChild(actChip("拍封面", function () { enqueue("cover", item.id, item.title); closeAct(); }));
-      box.appendChild(actChip("更改名稱", function () { startForm("rename_org", item); }));
-      box.appendChild(actChip("丟掉", function () {
-        closeAct();
-        selected = new Set([item.id]);
-        selectMode = true;
-        confirmTrash();
-      }));
-      body.appendChild(box);
-      return;
-    }
-    if (kind === "research") {
-      box.appendChild(actChip("重新生成", function () {
-        enqueue("generate_research", item.id, item.title);
-        closeAct();
-      }));
-    } else if (kind === "steam") {
-      box.appendChild(actChip("重新生成", function () {
-        enqueue("generate_steam", item.id, item.title);
-        closeAct();
-      }));
-    } else {
-      box.appendChild(actChip("開始擷取", function () { startCaptureFlow(item); }));
-      box.appendChild(actChip("新增下一集", function () {
-        post("/api/host/item", { op: "next_volume", book: item.id }).then(function (x) {
-          closeAct();
-          reload();
-          if (x.j && x.j.id) afterCreate(x.j.id);
-        });
-      }));
-      box.appendChild(actChip(item.reverse_turn ? "翻頁：左翻" : "翻頁：右翻", function () {
-        post("/api/host/item", { op: "toggle_turn", book: item.id }).then(function (x) {
-          if (x.res.ok && x.j) {
-            item.reverse_turn = !!x.j.reverse_turn;
-            flashNote(item.reverse_turn ? "左翻 ←" : "右翻 →");
-            paintActActions(item);
-          }
-        });
-      }));
-    }
-    box.appendChild(actChip("生成文字", function () { enqueue("generate", item.id, item.title); closeAct(); }));
-    box.appendChild(actChip("匯出 PDF", function () { enqueue("pdf", item.id, item.title); closeAct(); }));
-    box.appendChild(actChip("拍封面", function () { enqueue("cover", item.id, item.title); closeAct(); }));
-    box.appendChild(actChip("移至資料夾", function () {
-      closeAct();
-      selected = new Set([item.id]);
-      selectMode = true;
-      paintPicks();
-      openFolderSheet();
-    }));
-    box.appendChild(actChip("更改書名", function () { startForm("rename", item); }));
-    box.appendChild(actChip("丟掉", function () {
-      closeAct();
-      selected = new Set([item.id]);
-      selectMode = true;
-      confirmTrash();
-    }));
-    if (isDesktop()) {
-      box.appendChild(actChip("在電腦開", function () {
-        enqueue("open_folder", item.id, item.title);
-        closeAct();
-      }));
-    }
-    body.appendChild(box);
-  }
-
-  function startCaptureFlow(item, extra) {
-    extra = extra || {};
-    openActTitle("開始擷取");
-    const body = openActBody();
-    if (!body) return;
-    const box = document.createElement("div");
-    box.className = "tag-row";
-    [["capture", "這一本"], ["series", "全套"]].forEach(function (pair) {
-      box.appendChild(actChip(pair[1], function () {
-        enqueue(pair[0], item.id, item.title, extra);
-        closeAct();
-      }));
-    });
-    if (!extra.reader_url) {
-      box.appendChild(actChip("貼閱讀網址", function () { askReaderUrl(item); }));
-    }
-    body.appendChild(box);
-  }
-
-  function askReaderUrl(item) {
-    form = {
-      kind: "reader_url",
-      item: item,
-      steps: [{ key: "url", label: "閱讀網址" }],
-      idx: 0,
-      data: {},
-    };
-    paintForm();
-  }
-
   function enterSelect(id) {
     selectMode = true;
     if (id) selected.add(id);
@@ -863,7 +721,6 @@
     if (kind === "new_org") return [{ key: "title", label: "資料夾名稱" }];
     if (kind === "rename_org") return [{ key: "title", label: "名稱", value: item && item.title }];
     if (kind === "rename") return [{ key: "title", label: "書名", value: item && item.title }];
-    if (kind === "reader_url") return [{ key: "url", label: "閱讀網址" }];
     if (kind === "batch_steam") return [{ key: "lines", label: "每行一本", area: true }];
     if (kind === "research") {
       return [
@@ -988,14 +845,6 @@
           return enqueue(jobKind, id, made, extra);
         }).then(function () { return x; });
       });
-    } else if (kind === "reader_url") {
-      const url = (data.url || "").trim();
-      if (!url) {
-        formErr("請貼電腦閱讀網址");
-        return;
-      }
-      startCaptureFlow(item, { reader_url: url });
-      return;
     } else if (kind === "title") {
       req = post("/api/host/item", {
         op: "create_book",
@@ -1445,8 +1294,6 @@
     bindTile: bindTile,
     openPlus: openPlus,
     closePlus: closePlus,
-    openActFor: openActFor,
-    onTileClick: onTileClick,
     isSelect: function () { return selectMode; },
     clearSelect: clearSelect,
     afterPaint: afterPaint,

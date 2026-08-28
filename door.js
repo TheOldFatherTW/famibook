@@ -991,9 +991,6 @@
         return;
       }
       if (current.kind === "job") return;
-      if (hostOn() && window.FamiHost && window.FamiHost.onTileClick && window.FamiHost.onTileClick(current)) {
-        return;
-      }
       if (!canOpenReader(current)) return;
       openReader(current);
     });
