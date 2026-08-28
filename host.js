@@ -602,7 +602,8 @@
     body.appendChild(box);
   }
 
-  function startCaptureFlow(item) {
+  function startCaptureFlow(item, extra) {
+    extra = extra || {};
     openActTitle("開始擷取");
     const body = openActBody();
     if (!body) return;
@@ -610,24 +611,23 @@
     box.className = "tag-row";
     [["capture", "這一本"], ["series", "全套"]].forEach(function (pair) {
       box.appendChild(actChip(pair[1], function () {
-        if (item.has_reader_url) {
-          enqueue(pair[0], item.id, item.title);
-          closeAct();
-          return;
-        }
-        askReaderUrl(item, pair[0]);
+        enqueue(pair[0], item.id, item.title, extra);
+        closeAct();
       }));
     });
+    if (!extra.reader_url) {
+      box.appendChild(actChip("貼閱讀網址", function () { askReaderUrl(item); }));
+    }
     body.appendChild(box);
   }
 
-  function askReaderUrl(item, kind) {
+  function askReaderUrl(item) {
     form = {
       kind: "reader_url",
       item: item,
       steps: [{ key: "url", label: "閱讀網址" }],
       idx: 0,
-      data: { jobKind: kind },
+      data: {},
     };
     paintForm();
   }
@@ -958,14 +958,13 @@
         }).then(function () { return x; });
       });
     } else if (kind === "reader_url") {
-      const item = form.item;
       const url = (data.url || "").trim();
-      const jobKind = (form.data && form.data.jobKind) || "capture";
-      const extra = {};
-      if (url) extra.reader_url = url;
-      req = enqueue(jobKind, item && item.id, item && item.title, extra).then(function (x) {
-        return x;
-      });
+      if (!url) {
+        formErr("請貼電腦閱讀網址");
+        return;
+      }
+      startCaptureFlow(item, { reader_url: url });
+      return;
     } else if (kind === "title") {
       req = post("/api/host/item", {
         op: "create_book",
