@@ -372,6 +372,29 @@
     body.appendChild(btn);
   }
 
+  function addToggle(body, spec) {
+    const key = spec.key;
+    if (form.data[key] === undefined) form.data[key] = !!spec.on;
+    const lab = document.createElement("label");
+    lab.className = "ask-skip";
+    const name = document.createElement("span");
+    name.textContent = spec.label || "";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.setAttribute("role", "switch");
+    input.checked = !!form.data[key];
+    const sw = document.createElement("span");
+    sw.className = "ask-sw";
+    lab.appendChild(name);
+    lab.appendChild(input);
+    lab.appendChild(sw);
+    input.addEventListener("change", function () {
+      form.data[key] = !!input.checked;
+    });
+    body.appendChild(lab);
+    return input;
+  }
+
   function chipRow(pairs, current, onPick) {
     const row = document.createElement("div");
     row.className = "tag-row";
@@ -828,8 +851,11 @@
     if (kind === "capture") {
       return [
         { key: "title", label: "書名" },
-        { key: "series", label: "系列" },
-        { key: "volume", label: "集號" },
+        {
+          key: "volume",
+          label: "集號",
+          toggle: { key: "allVolumes", label: "全套截取", on: true },
+        },
       ];
     }
     if (kind === "title") return [{ key: "title", label: "書名" }];
@@ -903,6 +929,7 @@
       body.appendChild(row);
     } else {
       body.appendChild(row);
+      if (step.toggle) addToggle(body, step.toggle);
       addConfirm(body, function () { advance(input.value); });
     }
     input.addEventListener("keydown", function (ev) {
@@ -918,6 +945,10 @@
     if (!form) return;
     const step = form.steps[form.idx];
     form.data[step.key] = value;
+    if (step.toggle) {
+      const sw = document.querySelector("#actBody .ask-skip input");
+      if (sw) form.data[step.toggle.key] = !!sw.checked;
+    }
     if (form.idx < form.steps.length - 1) {
       form.idx += 1;
       paintForm();
@@ -939,20 +970,22 @@
     let req;
     if (kind === "capture") {
       const vol = parseInt(data.volume, 10);
+      const title = data.title || "";
+      const jobKind = data.allVolumes === false ? "capture" : "series";
       req = post("/api/host/item", {
         op: "ensure_book",
         kind: "book",
-        title: data.title || "",
-        series: data.series || "",
+        title: title,
+        series: isNaN(vol) ? (data.series || "") : title,
         volume: isNaN(vol) ? null : vol,
         cwd: cwd(),
       }).then(function (x) {
         if (!x.res.ok) return x;
         const id = x.j && x.j.id;
-        const title = (x.j && x.j.title) || data.title;
+        const made = (x.j && x.j.title) || title;
         const extra = {};
         return afterCreate(id).then(function () {
-          return enqueue("capture", id, title, extra);
+          return enqueue(jobKind, id, made, extra);
         }).then(function () { return x; });
       });
     } else if (kind === "reader_url") {
