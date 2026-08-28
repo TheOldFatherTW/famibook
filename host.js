@@ -48,12 +48,19 @@
     return window.FamiGate.api(path, key, Object.assign({ timeout: 20000 }, opts || {}));
   }
 
-  function post(path, body) {
-    return api(path, {
+  function post(path, body, extra) {
+    return api(path, Object.assign({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body || {}),
-    });
+    }, extra || {}));
+  }
+
+  function demandOk(x, fallback) {
+    if (x && x.res && x.res.ok) return x;
+    var msg = fallback || "做不到";
+    if (x && x.j && x.j.error) msg = String(x.j.error);
+    throw new Error(msg);
   }
 
   function cwd() {
@@ -573,13 +580,17 @@
     if (jobsOnly) {
       items.forEach(function (it) {
         chain = chain.then(function () {
-          return post("/api/host/jobs", { op: "cancel", id: it.job_id || String(it.id || "").replace(/^job:/, "") });
+          return post("/api/host/jobs", { op: "cancel", id: it.job_id || String(it.id || "").replace(/^job:/, "") }).then(function (x) {
+            return demandOk(x, "取消失敗");
+          });
         });
       });
     } else if (orgsOnly) {
       items.forEach(function (it) {
         chain = chain.then(function () {
-          return post("/api/host/org", { op: "folder_delete", folder: it.id });
+          return post("/api/host/org", { op: "folder_delete", folder: it.id }).then(function (x) {
+            return demandOk(x, "丟掉失敗");
+          });
         });
       });
     } else if (inOrg && books.length) {
@@ -587,20 +598,30 @@
         op: "unassign",
         folder: cwd(),
         books: books.map(function (it) { return it.id; }),
+      }).then(function (x) {
+        return demandOk(x, "拿掉失敗");
       });
     } else {
       books.forEach(function (it) {
         chain = chain.then(function () {
-          return post("/api/host/item", { op: "delete", book: it.id });
+          return post("/api/host/item", { op: "delete", book: it.id }, { timeout: 120000 }).then(function (x) {
+            return demandOk(x, "丟掉失敗");
+          });
         });
       });
       items.filter(function (it) { return it.kind === "org"; }).forEach(function (it) {
         chain = chain.then(function () {
-          return post("/api/host/org", { op: "folder_delete", folder: it.id });
+          return post("/api/host/org", { op: "folder_delete", folder: it.id }).then(function (x) {
+            return demandOk(x, "丟掉失敗");
+          });
         });
       });
     }
     chain.then(function () {
+      clearSelect();
+      reload();
+    }).catch(function (err) {
+      flashNote((err && err.message) || "丟掉失敗");
       clearSelect();
       reload();
     });
