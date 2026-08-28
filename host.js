@@ -7,6 +7,8 @@
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h6l2 2h8v10H4z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
   const HEART =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20C10.5 18.4 7.3 15.8 5.4 11.9C4 9.1 5.2 6 8.4 6c1.8 0 3 1.1 3.6 2.2C12.6 7.1 13.8 6 15.6 6c3.2 0 4.4 3.1 3 5.9C16.7 15.8 13.5 18.4 12 20Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+  const CAMERA =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="8" width="17" height="11.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 8l1.4-2.4h5.2L16 8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13.6" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>';
   const TEXT =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10v15H7z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9.5 8h5M9.5 12h5M9.5 16h3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
   const DESK =
@@ -43,6 +45,8 @@
   let orgSnap = { folders: [], favorites: [] };
   let noteTimer = 0;
   let jobsBusy = false;
+  let coverBusy = false;
+  let coverWaitTimer = 0;
 
   function api(path, opts) {
     return window.FamiGate.api(path, key, Object.assign({ timeout: 20000 }, opts || {}));
@@ -208,10 +212,15 @@
       const heart = rail.querySelector(".rail-heart");
       const folder = rail.querySelector(".rail-folder");
       const trash = rail.querySelector(".rail-trash");
+      const cover = rail.querySelector(".rail-cover");
       if (heart) heart.hidden = isJobs();
       if (folder) {
         folder.hidden = !host || isJobs();
         folder.classList.toggle("is-off", !folderOk());
+      }
+      if (cover) {
+        cover.hidden = !host || isJobs();
+        cover.classList.toggle("is-off", !coverOk());
       }
       if (trash) trash.hidden = !host;
     }
@@ -223,6 +232,12 @@
     const books = items.filter(function (it) { return it && it.kind !== "job" && it.kind !== "org"; });
     if (folders.length >= 2 && !books.length) return false;
     return books.length > 0 || folders.length === 1;
+  }
+
+  function coverOk() {
+    return pickedItems().some(function (it) {
+      return it && it.kind !== "job" && it.kind !== "org";
+    });
   }
 
   function flashNote(text) {
@@ -249,6 +264,98 @@
     }, 1600);
   }
 
+  function setCoverWaitPct(n) {
+    const pct = document.getElementById("waitPct");
+    if (pct) pct.textContent = Math.max(0, Math.min(100, Math.round(n))) + "%";
+  }
+
+  function showCoverWait() {
+    const mask = document.getElementById("waitMask");
+    const head = document.getElementById("waitTitle");
+    if (head) head.textContent = "更換封面中";
+    setCoverWaitPct(0);
+    if (mask) mask.hidden = false;
+    if (coverWaitTimer) window.clearInterval(coverWaitTimer);
+    coverWaitTimer = window.setInterval(function () {
+      const pct = document.getElementById("waitPct");
+      const n = parseInt((pct && pct.textContent) || "0", 10) || 0;
+      if (n < 90) setCoverWaitPct(n + 1);
+    }, 280);
+  }
+
+  function hideCoverWait() {
+    const mask = document.getElementById("waitMask");
+    if (mask) mask.hidden = true;
+    if (coverWaitTimer) {
+      window.clearInterval(coverWaitTimer);
+      coverWaitTimer = 0;
+    }
+  }
+
+  function postCoverFile(url, body, onPct) {
+    return new Promise(function (resolve, reject) {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url);
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) resolve(xhr);
+        else reject(new Error("fail"));
+      };
+      xhr.onerror = function () { reject(new Error("net")); };
+      if (xhr.upload) {
+        xhr.upload.onprogress = function (ev) {
+          if (ev.lengthComputable && ev.total) onPct(Math.round((ev.loaded / ev.total) * 100));
+        };
+      }
+      xhr.send(body);
+    });
+  }
+
+  function bindBookCoverInput() {
+    const input = document.getElementById("book-cover-input");
+    if (!input || input.dataset.ready) return;
+    input.dataset.ready = "1";
+    input.addEventListener("change", function () {
+      const file = input.files && input.files[0];
+      input.value = "";
+      if (file) uploadBookCovers(file);
+    });
+  }
+
+  function uploadBookCovers(file) {
+    if (coverBusy || !file) return;
+    const books = pickedItems().filter(function (it) {
+      return it && it.kind !== "job" && it.kind !== "org";
+    });
+    if (!books.length) return;
+    coverBusy = true;
+    showCoverWait();
+    const btn = document.querySelector(".rail-cover");
+    if (btn) btn.classList.add("is-run");
+    let chain = Promise.resolve();
+    books.forEach(function (it) {
+      chain = chain.then(function () {
+        const fd = new FormData();
+        fd.append("cover", file, file.name || "cover.jpg");
+        return postCoverFile(
+          window.FamiGate.origin() + "/api/host/cover?k=" + encodeURIComponent(key)
+            + "&book=" + encodeURIComponent(it.id),
+          fd,
+          setCoverWaitPct
+        );
+      });
+    });
+    chain.then(function () {
+      setCoverWaitPct(100);
+      reload();
+    }).catch(function () {
+      flashNote("這張圖沒辦法當封面");
+    }).finally(function () {
+      hideCoverWait();
+      coverBusy = false;
+      if (btn) btn.classList.remove("is-run");
+    });
+  }
+
   function ensureRail() {
     const rail = document.getElementById("photo-rail");
     if (!rail || rail.dataset.ready) return rail;
@@ -269,6 +376,20 @@
       }
       openFolderSheet();
     });
+    const cover = insButton("rail-cover", CAMERA, "換封面");
+    cover.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (!isHost() || isJobs()) return;
+      if (!coverOk()) {
+        flashNote("請先選一本書");
+        return;
+      }
+      const input = document.getElementById("book-cover-input");
+      if (!input) return;
+      input.value = "";
+      input.click();
+    });
     const heart = insButton("rail-heart", HEART, "愛心");
     heart.addEventListener("click", function (ev) {
       ev.preventDefault();
@@ -277,6 +398,7 @@
     });
     rail.appendChild(trash);
     rail.appendChild(folder);
+    rail.appendChild(cover);
     rail.appendChild(heart);
     return rail;
   }
@@ -1298,6 +1420,7 @@
   function attach(token) {
     key = token;
     ensureRail();
+    bindBookCoverInput();
     if (attached) {
       syncGear();
       return;
