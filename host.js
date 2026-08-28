@@ -501,7 +501,7 @@
       return;
     }
     if (kind === "research") {
-      box.appendChild(actChip("繼續研究", function () {
+      box.appendChild(actChip("重新生成", function () {
         enqueue("generate_research", item.id, item.title);
         closeAct();
       }));
@@ -933,6 +933,10 @@
         return afterCreate(x.j && x.j.id).then(function () { return x; });
       });
     } else if (kind === "research") {
+      if (!(data.title || "").trim() && !(data.questions || "").trim()) {
+        formErr("請寫主題或想搞懂");
+        return;
+      }
       req = post("/api/host/item", {
         op: "create_research",
         title: data.title || "",
