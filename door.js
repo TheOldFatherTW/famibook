@@ -287,7 +287,7 @@
   function closeSettings() {
     const wrap = settingsWrap || document.getElementById("album-settings");
     if (!wrap) return;
-    const menu = wrap.querySelector(".settings-menu") || document.querySelector(".settings-menu");
+    const menu = wrap.querySelector(".settings-menu") || document.querySelector(".settings-menu:not(#plus-menu)");
     const toggle = wrap.querySelector(".settings-toggle");
     if (menu) {
       menu.hidden = true;
@@ -314,6 +314,7 @@
       ev.preventDefault();
       ev.stopPropagation();
       closeSettings();
+      if (window.FamiHost && window.FamiHost.closePlus) window.FamiHost.closePlus();
     });
     document.body.appendChild(catcher);
     settingsCatch = catcher;
@@ -345,6 +346,7 @@
   }
 
   function openSettingsMenu(toggle, menu) {
+    if (window.FamiHost && window.FamiHost.closePlus) window.FamiHost.closePlus();
     const catcher = ensureSettingsCatch();
     catcher.hidden = false;
     document.body.appendChild(catcher);
@@ -430,7 +432,10 @@
     if (host) host.appendChild(wrap);
     else document.body.appendChild(wrap);
     document.addEventListener("keydown", function (ev) {
-      if (ev.key === "Escape") closeSettings();
+      if (ev.key === "Escape") {
+        closeSettings();
+        if (window.FamiHost && window.FamiHost.closePlus) window.FamiHost.closePlus();
+      }
     });
     window.addEventListener("resize", function () {
       placeSettingsMenu(toggle, menu);
@@ -1514,6 +1519,13 @@
     },
     pickTab: pickTab,
     closeSettings: closeSettings,
+    placeMenu: placeSettingsMenu,
+    showCatch: function () {
+      const catcher = ensureSettingsCatch();
+      catcher.hidden = false;
+      document.body.appendChild(catcher);
+      document.documentElement.classList.add("settings-open");
+    },
     setKind: function (kind) { hostTab = kind === "all" ? "title" : (kind || "title"); },
     setTab: function (tab) {
       hostTab = tab === "all" ? "title" : (tab || "title");

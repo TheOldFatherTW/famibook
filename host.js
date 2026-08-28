@@ -92,7 +92,7 @@
       return;
     }
     const wrap = document.getElementById("album-settings");
-    const menu = (wrap && wrap.querySelector(".settings-menu")) || document.querySelector(".settings-menu");
+    const menu = (wrap && wrap.querySelector(".settings-menu")) || document.querySelector(".settings-menu:not(#plus-menu)");
     const toggle = wrap && wrap.querySelector(".settings-toggle");
     if (menu) {
       menu.hidden = true;
@@ -144,8 +144,15 @@
     });
   }
 
+  function gearMenu() {
+    const wrap = document.getElementById("album-settings");
+    const nested = wrap && wrap.querySelector(".settings-menu");
+    if (nested) return nested;
+    return document.querySelector(".settings-menu:not(#plus-menu)");
+  }
+
   function syncGear() {
-    const menu = document.querySelector(".settings-menu");
+    const menu = gearMenu();
     if (!menu) return;
     menu.querySelectorAll("[data-host-adv]").forEach(function (n) { n.remove(); });
     if (!isHost()) return;
@@ -379,30 +386,70 @@
     return row;
   }
 
+  function plusMenuEl() {
+    let menu = document.getElementById("plus-menu");
+    if (menu) return menu;
+    menu = document.createElement("div");
+    menu.id = "plus-menu";
+    menu.className = "settings-menu";
+    menu.setAttribute("role", "menu");
+    menu.hidden = true;
+    menu.addEventListener("pointerdown", function (ev) {
+      ev.stopPropagation();
+    });
+    document.body.appendChild(menu);
+    return menu;
+  }
+
+  function closePlus() {
+    const menu = document.getElementById("plus-menu");
+    if (menu) menu.hidden = true;
+  }
+
   function openPlus() {
+    const menu = plusMenuEl();
+    if (!menu.hidden) {
+      closePlus();
+      closeSettings();
+      return;
+    }
+    closeSettings();
     form = null;
     actItem = { kind: "plus" };
-    openActTitle("新增");
-    const body = openActBody();
-    if (!body) return;
-    const box = document.createElement("div");
-    box.className = "tag-row";
+    menu.innerHTML = "";
     [
-      ["capture", "截取書籍"],
-      ["folder", "資料夾"],
-      ["research", "日常研究"],
-      ["steam", "遊戲研究"],
-      ["batch_steam", "批次遊戲"],
-      ["title", "一般書籍"],
-    ].forEach(function (pair) {
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className = "tag-chip";
-      chip.textContent = pair[1];
-      chip.addEventListener("click", function () { startForm(pair[0]); });
-      box.appendChild(chip);
+      [TEXT, "截取書籍", "capture"],
+      [REPORT, "日常研究", "research"],
+      [DESK, "遊戲研究", "steam"],
+    ].forEach(function (row) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "settings-entry";
+      btn.setAttribute("role", "menuitem");
+      const badge = document.createElement("span");
+      badge.className = "ins-icon job-icon";
+      badge.innerHTML = '<span class="ins-ring"></span><span class="ins-face">' + row[0] + "</span>";
+      btn.appendChild(badge);
+      const text = document.createElement("span");
+      text.textContent = row[1];
+      btn.appendChild(text);
+      btn.addEventListener("click", function () {
+        closePlus();
+        closeSettings();
+        startForm(row[2]);
+      });
+      menu.appendChild(btn);
     });
-    body.appendChild(box);
+    const tile = document.querySelector("#feed .tile-add");
+    document.body.appendChild(menu);
+    menu.hidden = false;
+    document.documentElement.classList.add("settings-open");
+    if (window.FamiShelf && window.FamiShelf.showCatch) window.FamiShelf.showCatch();
+    requestAnimationFrame(function () {
+      if (window.FamiShelf && window.FamiShelf.placeMenu && tile) {
+        window.FamiShelf.placeMenu(tile, menu);
+      }
+    });
   }
 
   function openFind() {
@@ -1241,9 +1288,11 @@
   }
 
   function paintHostGearIcons() {
-    const jobsBadge = document.querySelector('.settings-entry[data-job="jobs"] .ins-icon');
+    const menu = gearMenu();
+    if (!menu) return;
+    const jobsBadge = menu.querySelector('.settings-entry[data-job="jobs"] .ins-icon');
     if (jobsBadge) jobsBadge.classList.toggle("is-run", isJobs());
-    const researchBadge = document.querySelector('.settings-entry[data-job="research"] .ins-icon');
+    const researchBadge = menu.querySelector('.settings-entry[data-job="research"] .ins-icon');
     if (researchBadge) researchBadge.classList.toggle("is-run", tab() === "research");
   }
 
@@ -1329,6 +1378,7 @@
     attach: attach,
     bindTile: bindTile,
     openPlus: openPlus,
+    closePlus: closePlus,
     openActFor: openActFor,
     onTileClick: onTileClick,
     isSelect: function () { return selectMode; },
