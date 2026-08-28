@@ -844,7 +844,7 @@
       return [
         { key: "title", label: "主題" },
         { key: "questions", label: "想搞懂" },
-        { key: "depth", label: "深度", chips: ["速覽", "實務手冊", "深挖", "SSR"] },
+        { key: "depth", label: "深度", chips: ["深度研究"] },
       ];
     }
     if (kind === "steam") {
@@ -868,6 +868,7 @@
     err.id = "hostFormErr";
     body.appendChild(err);
     if (step.chips) {
+      if (!form.data[step.key]) form.data[step.key] = step.chips[0];
       const row = document.createElement("div");
       row.className = "tag-row";
       step.chips.forEach(function (label) {
@@ -882,7 +883,7 @@
         row.appendChild(chip);
       });
       body.appendChild(row);
-      addConfirm(body, function () { advance(""); });
+      addConfirm(body, function () { advance(form.data[step.key] || step.chips[0]); });
       return;
     }
     const row = document.createElement("div");
@@ -984,7 +985,7 @@
         op: "create_research",
         title: data.title || "",
         questions: data.questions || "",
-        depth: data.depth || "實務手冊",
+        depth: data.depth === "深度研究" ? "SSR" : (data.depth || "SSR"),
         cwd: cwd(),
         start_queue: true,
       }).then(function (x) {
