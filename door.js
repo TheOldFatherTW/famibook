@@ -42,7 +42,7 @@
   const FIRST = 12;
   const THUMB_CAP = 6;
   const THUMB_CACHE = "famibook-thumbs-v3";
-  const SHELF_STORE = "famibook.shelf.v1.";
+  const SHELF_STORE = "famibook.shelf.v2.";
   let thumbGen = 0;
   let thumbActive = 0;
   const thumbWait = [];
@@ -1062,7 +1062,7 @@
   function sameHead(fresh) {
     const tiles = feedBookTiles();
     if (!fresh || !fresh.length) return tiles.length === 0;
-    if (tiles.length < fresh.length) return false;
+    if (tiles.length !== fresh.length) return false;
     for (let i = 0; i < fresh.length; i += 1) {
       const id = tiles[i].dataset.id;
       if (itemStamp(catalog[id]) !== itemStamp(fresh[i])) return false;
