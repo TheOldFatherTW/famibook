@@ -1316,6 +1316,9 @@ button.tag-chip {
   color: #fff;
   min-height: 22px;
 }
+.hp-label[hidden] {
+  display: none !important;
+}
 .hp-text {
   flex: 0 0 auto;
   white-space: nowrap;
@@ -1397,6 +1400,14 @@ button.tag-chip {
   padding: 10px 8px 40px;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
   pointer-events: none;
+}
+.tile-job-hud.is-done {
+  pointer-events: auto;
+  padding-bottom: 8px;
+}
+.tile-job-hud button.tag-apply {
+  pointer-events: auto;
+  margin: 0;
 }
 .tile .job-ctrl {
   position: absolute;

@@ -1107,10 +1107,11 @@
 
   function jobStateLabel(item) {
     if (!item) return "";
-    if (item.state === "running") return JOB_LABEL[item.job_kind] || "進行中";
+    if (item.state === "running") return item.phase || JOB_LABEL[item.job_kind] || "進行中";
     if (item.state === "paused") return "已暫停";
     if (item.state === "error") return item.error || "失敗";
     if (item.state === "queued" || item.state === "held") return "排隊中";
+    if (item.state === "done") return item.phase || "工作完成";
     return "尚未開始";
   }
 
@@ -1125,6 +1126,8 @@
       job_kind: row.kind,
       state: row.state,
       percent: row.percent,
+      phase: row.phase || "",
+      ack: row.ack,
       error: row.error || "",
       has_cover: !!row.has_cover,
       has_pages: false,
@@ -1163,21 +1166,49 @@
     const running = item.state === "running";
     const paused = item.state === "paused";
     const failed = item.state === "error";
+    const done = item.state === "done" && item.ack === false;
     const pct = Math.max(0, Math.min(100, Number(item.percent) || 0));
-    const showBar = running || (paused && pct > 0);
+    const showBar = !done && (running || (paused && pct > 0));
     hud.classList.toggle("is-run", running);
+    hud.classList.toggle("is-done", done);
+    const label = hud.querySelector(".hp-label");
     const text = hud.querySelector(".hp-text");
     const think = hud.querySelector(".thinking-five");
     const meter = hud.querySelector(".hp-meter");
     const fill = hud.querySelector(".hp-fill");
     const alt = hud.querySelector(".hp-alt");
     const altPct = hud.querySelector(".hp-alt-pct");
-    if (text) text.textContent = jobStateLabel(item);
+    if (label) label.hidden = done;
+    if (text) text.textContent = done ? "" : jobStateLabel(item);
     if (think) think.hidden = !running;
     if (meter) meter.hidden = !showBar;
     if (fill) fill.style.width = pct + "%";
     if (alt) alt.hidden = !showBar;
     if (altPct) altPct.textContent = pct + "%";
+    let doneBtn = hud.querySelector("button.tag-apply");
+    if (done) {
+      if (!doneBtn) {
+        doneBtn = document.createElement("button");
+        doneBtn.type = "button";
+        doneBtn.className = "tag-apply";
+        doneBtn.innerHTML = '<span class="tag-apply-face">工作完成</span>';
+        doneBtn.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const id = doneBtn.dataset.jobId || "";
+          if (!id) return;
+          post("/api/host/jobs", { op: "cancel", id: id }).then(function () {
+            if (isJobs()) loadJobs(true);
+            else pollJobs();
+          });
+        });
+        hud.appendChild(doneBtn);
+      }
+      doneBtn.dataset.jobId = item.job_id || "";
+      doneBtn.hidden = false;
+    } else if (doneBtn) {
+      doneBtn.hidden = true;
+    }
     let ctrl = el.querySelector(".job-ctrl");
     const canPause = running;
     const canPlay = paused || failed;
@@ -1186,9 +1217,9 @@
       return;
     }
     const svg = canPause ? PAUSE : PLAY;
-    const label = canPause ? "暫停" : "開始";
+    const ctrlLabel = canPause ? "暫停" : "開始";
     if (!ctrl) {
-      ctrl = insButton("job-ctrl", svg, label);
+      ctrl = insButton("job-ctrl", svg, ctrlLabel);
       ctrl.addEventListener("click", function (ev) {
         ev.preventDefault();
         ev.stopPropagation();
@@ -1203,8 +1234,8 @@
     } else {
       const face = ctrl.querySelector(".ins-face");
       if (face) face.innerHTML = svg;
-      ctrl.setAttribute("aria-label", label);
-      ctrl.title = label;
+      ctrl.setAttribute("aria-label", ctrlLabel);
+      ctrl.title = ctrlLabel;
     }
   }
 
@@ -1353,7 +1384,7 @@
     }
     btn.addEventListener("pointerdown", function (ev) {
       if (ev.button && ev.button !== 0) return;
-      if (ev.target && ev.target.closest && ev.target.closest(".job-ctrl")) return;
+      if (ev.target && ev.target.closest && ev.target.closest(".job-ctrl, .tag-apply")) return;
       sx = ev.clientX;
       sy = ev.clientY;
       fromHold = false;
@@ -1377,6 +1408,10 @@
       }, true);
     });
     btn.addEventListener("click", function (ev) {
+      if (ev.target && ev.target.closest && ev.target.closest(".job-ctrl, .tag-apply")) {
+        ev.stopImmediatePropagation();
+        return;
+      }
       if (fromHold) {
         ev.preventDefault();
         ev.stopImmediatePropagation();
