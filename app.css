@@ -707,8 +707,40 @@ html.has-rail .feed {
 .tile.is-drop {
   box-shadow: inset 0 0 0 3px var(--rose);
 }
-.tile.is-pinned .tile-shield {
+.tile.is-pinned:not(.is-run) .tile-shield {
   box-shadow: inset 0 0 0 3px var(--rose);
+}
+.tile.is-run {
+  isolation: isolate;
+  padding: var(--apply-ring);
+}
+.tile.is-run::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  top: 50%;
+  width: 200vw;
+  height: 200vw;
+  border-radius: 0;
+  background: conic-gradient(
+    from 0deg,
+    #feda75 0deg,
+    #fa7e1e 70deg,
+    #d62976 140deg,
+    #962fbf 210deg,
+    #4f5bd5 280deg,
+    #feda75 360deg
+  );
+  animation: tag-apply-spin 2.4s linear infinite;
+  pointer-events: none;
+}
+.tile.is-run img {
+  position: relative;
+  z-index: 1;
+}
+.tile.is-run .tile-shield {
+  inset: var(--apply-ring);
 }
 .tile img {
   width: 100%;
@@ -1330,30 +1362,6 @@ button.tag-chip {
   background: linear-gradient(180deg, #e85aa0 0%, var(--rose) 62%, #a3266b 100%);
   transition: width 0.45s ease;
 }
-.tile-ring {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  pointer-events: none;
-  background: transparent;
-}
-.tile.is-run .tile-ring {
-  padding: 3px;
-  background: conic-gradient(
-    from 210deg,
-    #feda75 0deg,
-    #fa7e1e 70deg,
-    #d62976 140deg,
-    #962fbf 210deg,
-    #4f5bd5 280deg,
-    #feda75 360deg
-  );
-  animation: ins-spin 2.8s linear infinite;
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-}
 .tile-job-hud {
   position: absolute;
   left: 0;
@@ -1374,7 +1382,7 @@ button.tag-chip {
 @media (prefers-reduced-motion: reduce) {
   .thinking-five span, .blobs span, .cab-cover.is-run .cab-ring,
   .cab-cover.is-holo .cab-foil, .ins-icon.is-run .ins-ring, button.tag-apply::before,
-  .tile.is-run .tile-ring, .hp.is-run .hp-fill { animation: none; }
+  .tile.is-run::before, .hp.is-run .hp-fill { animation: none; }
 }
 html.is-reading,
 html.is-reading body {

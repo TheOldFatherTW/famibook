@@ -1018,7 +1018,17 @@
     if (!attached || !key || !isHost()) return;
     api("/api/host/jobs", { timeout: 8000 }).then(function (x) {
       if (x.res.ok && x.j) paintJobsHud(x.j, true);
-    }).catch(function () {});
+      armPoll(x && x.j);
+    }).catch(function () {
+      armPoll(null);
+    });
+  }
+
+  function armPoll(snap) {
+    if (jobTimer) window.clearTimeout(jobTimer);
+    const busy = !!(snap && snap.current);
+    const ms = busy ? 800 : isJobs() ? 1500 : 4000;
+    jobTimer = window.setTimeout(pollJobs, ms);
   }
 
   function jobStateLabel(item) {
@@ -1055,12 +1065,8 @@
     el.classList.toggle("is-pinned", item.state === "running");
     const badge = el.querySelector(".tile-pct");
     if (badge) badge.hidden = true;
-    let ring = el.querySelector(".tile-ring");
-    if (!ring) {
-      ring = document.createElement("span");
-      ring.className = "tile-ring";
-      el.appendChild(ring);
-    }
+    const leftover = el.querySelector(".tile-ring");
+    if (leftover) leftover.remove();
     let hud = el.querySelector(".tile-job-hud");
     if (!hud) {
       hud = document.createElement("div");
@@ -1306,9 +1312,8 @@
     bindSheets();
     syncGear();
     refreshOrg();
+    if (jobTimer) window.clearTimeout(jobTimer);
     pollJobs();
-    if (jobTimer) window.clearInterval(jobTimer);
-    jobTimer = window.setInterval(pollJobs, 4000);
   }
 
   window.FamiHost = {
