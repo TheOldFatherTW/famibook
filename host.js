@@ -623,13 +623,9 @@
     const books = items.filter(function (it) { return it.kind !== "job" && it.kind !== "org"; });
     let text = "丟掉選取的項目?";
     if (jobsOnly) {
-      const waiting = items.filter(function (it) { return it.state !== "running"; });
-      if (!waiting.length) {
-        openAsk("進行中的工作不能丟掉", function () {});
-        return;
-      }
-      text = "取消這些工作?";
-      items = waiting;
+      text = items.length === 1
+        ? "取消「" + (items[0].title || "") + "」?"
+        : "取消這些工作?";
     } else if (orgsOnly) text = "丟掉這些資料夾?裡頭的書還在。";
     else if (inOrg && books.length && items.every(function (it) { return it.kind !== "org"; })) {
       text = "從這個資料夾拿掉?";
@@ -1088,6 +1084,7 @@
     }
     const running = item.state === "running";
     const paused = item.state === "paused";
+    const failed = item.state === "error";
     const pct = Math.max(0, Math.min(100, Number(item.percent) || 0));
     const showBar = running || (paused && pct > 0);
     hud.classList.toggle("is-run", running);
@@ -1104,8 +1101,14 @@
     if (alt) alt.hidden = !showBar;
     if (altPct) altPct.textContent = pct + "%";
     let ctrl = el.querySelector(".job-ctrl");
-    const svg = running ? PAUSE : PLAY;
-    const label = running ? "暫停" : "開始";
+    const canPause = running;
+    const canPlay = paused || failed;
+    if (!canPause && !canPlay) {
+      if (ctrl) ctrl.remove();
+      return;
+    }
+    const svg = canPause ? PAUSE : PLAY;
+    const label = canPause ? "暫停" : "開始";
     if (!ctrl) {
       ctrl = insButton("job-ctrl", svg, label);
       ctrl.addEventListener("click", function (ev) {
