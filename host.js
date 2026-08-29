@@ -408,6 +408,7 @@
   function bindMask(mask, closeFn) {
     if (!mask || mask.dataset.hostMask) return;
     mask.dataset.hostMask = "1";
+    if (window.FamiGate && window.FamiGate.lockSheetPage) window.FamiGate.lockSheetPage(mask);
     mask.addEventListener("pointerdown", function (ev) {
       maskDown = ev.target === mask;
     });
