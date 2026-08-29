@@ -1072,6 +1072,7 @@
         op: "folder_create",
         title: data.title || "",
         books: (item && item.books) || [],
+        tab: tab(),
       });
     } else if (kind === "folder") {
       req = post("/api/host/item", {

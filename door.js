@@ -42,7 +42,7 @@
   const FIRST = 12;
   const THUMB_CAP = 6;
   const THUMB_CACHE = "famibook-thumbs-v3";
-  const SHELF_STORE = "famibook.shelf.v2.";
+  const SHELF_STORE = "famibook.shelf.v3.";
   let thumbGen = 0;
   let thumbActive = 0;
   const thumbWait = [];
