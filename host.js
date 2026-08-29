@@ -28,9 +28,11 @@
     series: "全套截取",
     generate: "文字",
     generate_research: "日常研究",
+    generate_guide: "遊戲攻略",
     generate_steam: "遊戲研究",
     pdf: "PDF",
     cover: "封面",
+    private_favorites: "擷取私藏",
   };
 
   let key = "";
@@ -562,7 +564,9 @@
     menu.innerHTML = "";
     [
       [TEXT, "截取書籍", "capture"],
+      [TEXT, "擷取私藏", "private"],
       [REPORT, "日常研究", "research"],
+      [WORK, "遊戲攻略", "guide"],
       [DESK, "遊戲研究", "steam"],
     ].forEach(function (row) {
       const btn = document.createElement("button");
@@ -810,10 +814,13 @@
         op: "assign",
         books: books.map(function (it) { return it.id; }),
         folders: ids,
-      }).then(function () {
+      }).then(function (x) {
+        demandOk(x, "放不進資料夾");
         closeAct();
         clearSelect();
         reload();
+      }).catch(function (err) {
+        flashNote((err && err.message) || "放不進資料夾");
       });
     });
   }
@@ -859,6 +866,9 @@
         },
       ];
     }
+    if (kind === "private") {
+      return [{ key: "go", label: "擷取私藏", confirmOnly: true }];
+    }
     if (kind === "title") return [{ key: "title", label: "書名" }];
     if (kind === "folder") return [{ key: "title", label: "資料夾名稱" }];
     if (kind === "new_org") return [{ key: "title", label: "資料夾名稱" }];
@@ -870,6 +880,12 @@
         { key: "title", label: "主題" },
         { key: "questions", label: "想搞懂" },
         { key: "depth", label: "深度", chips: ["深度研究"] },
+      ];
+    }
+    if (kind === "guide") {
+      return [
+        { key: "title", label: "遊戲名" },
+        { key: "volumes", label: "冊名，一行一本", area: true },
       ];
     }
     if (kind === "steam") {
@@ -892,6 +908,10 @@
     err.className = "err";
     err.id = "hostFormErr";
     body.appendChild(err);
+    if (step.confirmOnly) {
+      addConfirm(body, function () { advance("1"); });
+      return;
+    }
     if (step.chips) {
       if (!form.data[step.key]) form.data[step.key] = step.chips[0];
       const row = document.createElement("div");
@@ -968,7 +988,13 @@
     const data = form.data;
     const item = form.item;
     let req;
-    if (kind === "capture") {
+    if (kind === "private") {
+      req = post("/api/host/item", { op: "private_favorites" }).then(function (x) {
+        if (!x.res.ok) return x;
+        if (window.FamiShelf && window.FamiShelf.setTab) window.FamiShelf.setTab("jobs");
+        return x;
+      });
+    } else if (kind === "capture") {
       const vol = parseInt(data.volume, 10);
       const title = data.title || "";
       const jobKind = data.allVolumes === false ? "capture" : "series";
@@ -1013,6 +1039,22 @@
       }).then(function (x) {
         if (!x.res.ok) return x;
         return afterCreate(x.j && x.j.id).then(function () { return x; });
+      });
+    } else if (kind === "guide") {
+      if (!(data.title || "").trim()) {
+        formErr("請寫遊戲名");
+        return;
+      }
+      req = post("/api/host/item", {
+        op: "create_guide",
+        title: data.title || "",
+        volumes: data.volumes || "",
+        cwd: cwd(),
+        start_queue: true,
+      }).then(function (x) {
+        if (!x.res.ok) return x;
+        if (window.FamiShelf && window.FamiShelf.setTab) window.FamiShelf.setTab("research");
+        return x;
       });
     } else if (kind === "steam") {
       req = post("/api/host/item", {
