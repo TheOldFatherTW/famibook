@@ -886,6 +886,7 @@
       return [
         { key: "title", label: "遊戲名" },
         { key: "volumes", label: "冊名，一行一本", area: true },
+        { key: "sources", label: "影片網址，一行一個", area: true },
       ];
     }
     if (kind === "steam") {
@@ -1049,6 +1050,7 @@
         op: "create_guide",
         title: data.title || "",
         volumes: data.volumes || "",
+        sources: data.sources || "",
         cwd: cwd(),
         start_queue: true,
       }).then(function (x) {
