@@ -648,7 +648,7 @@
     [
       "./read.html",
       "./read.css?v=14",
-      origin + "/static/reader.js?v=25",
+      origin + "/static/reader.js?v=26",
       origin + "/static/css/global.css?v=20",
       origin + "/static/css/read.css?v=20",
       origin + "/static/css/navImage.css?v=20",
@@ -711,7 +711,11 @@
     }
     if (bridge) bridge.classList.toggle("has-cover", !!cover);
     window.clearTimeout(hintTimer);
-    if (hint) hint.hidden = false;
+    if (hint) {
+      const wait = hint.querySelector(".read-wait");
+      if (wait) wait.textContent = (opts && opts.wait) || "讀取中";
+      hint.hidden = false;
+    }
     rememberReading(item, cover);
     document.documentElement.classList.add("is-reading");
     layer.hidden = false;
@@ -1480,7 +1484,11 @@
     const kind = ev.data && ev.data.fami;
     if (kind === "close-reader") closeReader();
     else if (kind === "reader-ready") showReaderLive();
-    else if (kind === "reader-loading" && readerOpen) {
+    else if (kind === "open-next" && ev.data.book) {
+      const nextId = String(ev.data.book);
+      const item = catalog[nextId] || { id: nextId, has_cover: true };
+      openReader(item, { wait: "下一集..." });
+    } else if (kind === "reader-loading" && readerOpen) {
       const layer = document.getElementById("reader-layer");
       if (layer) layer.classList.remove("is-live");
     }
