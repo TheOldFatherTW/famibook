@@ -1,1 +1,1 @@
-window.VAULT_ORIGIN = "https://county-suits-band-bishop.trycloudflare.com";
+window.VAULT_ORIGIN = "https://affordable-telling-instructors-involved.trycloudflare.com";
