@@ -215,7 +215,14 @@
       const folder = rail.querySelector(".rail-folder");
       const trash = rail.querySelector(".rail-trash");
       const cover = rail.querySelector(".rail-cover");
-      if (heart) heart.hidden = isJobs();
+      if (heart) {
+        heart.hidden = isJobs();
+        const books = pickedItems().filter(function (it) {
+          return it && it.kind !== "job";
+        });
+        const loved = books.length > 0 && books.every(function (it) { return it.favorite; });
+        heart.classList.toggle("is-on", loved);
+      }
       if (folder) {
         folder.hidden = !host || isJobs();
         folder.classList.toggle("is-off", !folderOk());
