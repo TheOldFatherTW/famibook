@@ -1,1 +1,1 @@
-window.VAULT_ORIGIN = "https://affordable-telling-instructors-involved.trycloudflare.com";
+window.VAULT_ORIGIN = "https://degree-symphony-brick-gpl.trycloudflare.com";
