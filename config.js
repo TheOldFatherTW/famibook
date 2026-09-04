@@ -1,1 +1,1 @@
-window.VAULT_ORIGIN = "https://degree-symphony-brick-gpl.trycloudflare.com";
+window.VAULT_ORIGIN = "https://beginner-dreams-microwave-copy.trycloudflare.com";
