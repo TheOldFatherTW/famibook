@@ -1,1 +1,1 @@
-window.VAULT_ORIGIN = "https://relocation-path-toolkit-sci.trycloudflare.com";
+window.VAULT_ORIGIN = "https://exhibit-commented-booking-underlying.trycloudflare.com";
