@@ -1,1 +1,1 @@
-window.VAULT_ORIGIN = "https://printers-sponsors-competitive-pod.trycloudflare.com";
+window.VAULT_ORIGIN = "https://atmospheric-proposals-end-synthesis.trycloudflare.com";
