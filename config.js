@@ -1,1 +1,1 @@
-window.VAULT_ORIGIN = "https://exhibit-commented-booking-underlying.trycloudflare.com";
+window.VAULT_ORIGIN = "https://witch-year-qui-tender.trycloudflare.com";
