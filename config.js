@@ -1,1 +1,1 @@
-window.VAULT_ORIGIN = "https://atmospheric-proposals-end-synthesis.trycloudflare.com";
+window.VAULT_ORIGIN = "https://euro-photographs-republican-assistant.trycloudflare.com";
