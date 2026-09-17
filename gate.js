@@ -1,4 +1,25 @@
+/**
+ * FamiGate kernel — config-driven vault door helpers (Wave2).
+ *
+ * Contract:
+ * - Set window.FAMIGATE_CONFIG before this script runs (typically in config.js).
+ * - Per-app knobs: appId, viewKeyStorage, productLabel.
+ * - Shared runtime: window.VAULT_ORIGIN (vault base URL, trailing slash stripped).
+ * - Public API on window.FamiGate must stay stable for door.js / hey.html.
+ * - Each app keeps its own viewKeyStorage namespace; do not share keys across apps.
+ */
 (function () {
+  const CFG = Object.assign(
+    {
+      appId: "famibook",
+      viewKeyStorage: "famibook.viewKey",
+      productLabel: "FamiBook",
+    },
+    typeof window !== "undefined" && window.FAMIGATE_CONFIG ? window.FAMIGATE_CONFIG : {}
+  );
+  const VIEW_KEY = String(CFG.viewKeyStorage || "famibook.viewKey");
+  const COOKIE_KEY_RE = new RegExp("(?:^|; )" + VIEW_KEY.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "=([^;]*)");
+
   const KEY_RE = /^[A-Za-z0-9_-]{8,128}$/;
   const origin = () => String(window.VAULT_ORIGIN || "").replace(/\/$/, "");
 
@@ -12,10 +33,10 @@
   }
 
   function savePersonal(token) {
-    try { localStorage.setItem("famibook.viewKey", token); } catch (e) {}
+    try { localStorage.setItem(VIEW_KEY, token); } catch (e) {}
     try {
       const path = location.pathname.replace(/[^/]+$/, "") || "/";
-      document.cookie = "famibook.viewKey=" + encodeURIComponent(token) + "; path=" + path + "; max-age=31536000; SameSite=Lax";
+      document.cookie = VIEW_KEY + "=" + encodeURIComponent(token) + "; path=" + path + "; max-age=31536000; SameSite=Lax";
     } catch (e) {}
   }
 
@@ -36,10 +57,10 @@
       h = raw.indexOf("k=") === 0 ? decodeURIComponent((raw.slice(2).split("&")[0] || "").replace(/\+/g, " ")) : (new URLSearchParams(raw).get("k") || "");
     } catch (e) {}
     let stored = "";
-    try { stored = localStorage.getItem("famibook.viewKey") || ""; } catch (e) {}
+    try { stored = localStorage.getItem(VIEW_KEY) || ""; } catch (e) {}
     let cookie = "";
     try {
-      const m = document.cookie.match(/(?:^|; )famibook\.viewKey=([^;]*)/);
+      const m = document.cookie.match(COOKIE_KEY_RE);
       cookie = m ? decodeURIComponent(m[1]) : "";
     } catch (e) {}
     const fromUrl = KEY_RE.test(q) ? q : KEY_RE.test(h) ? h : "";
