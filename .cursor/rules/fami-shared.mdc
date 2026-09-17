@@ -1,0 +1,35 @@
+---
+description: Fami 共用門面政策 — 100% 共用殼、禁止第三種卡、對齊 fami-shared-ui
+alwaysApply: true
+---
+
+# Fami 共用門面（famibook 範本）
+
+本庫為 **可共用門面範本**（famibook）。同族：kodohon、gamepal。
+
+## 架構
+
+- GitHub Pages 公開門面 → `config.js` 的 `VAULT_ORIGIN` → 家裡保險庫（隧道 + 本機 HTTP）。
+- 使用者入口是 Pages 網址，不是 exe／bat。
+
+## 必守規則
+
+1. **能共用的物件 100% 共用** — 返回、確認、找卡／操作卡、齒輪、等待、入口頁／個人頁骨架等門面殼必須與同族門面一致。
+2. **不要各做第三種卡** — 禁止自造私製按鈕或卡片型態；對齊 skill **`fami-shared-ui`** 詞彙表。
+3. **改共用件要雙編** — 改一顆共用殼 = 同一回合更新 famibook、kodohon、gamepal（及已掛上的門面），提高 `?v=`。
+4. **FamiGate 核心** — 優先共用 `gate.js`；無必要勿 fork。
+5. **標準版個人頁** — 預設完整殼（封面、長押多選、齒輪圖示、首頁頭）；閹割版須先問使用者。
+6. **產品 vs 殼** — 書／相簿／遊戲內容可不同；門面殼不能各做各的。
+
+## 開工前
+
+- 讀 `AGENTS.md` 與 skill **`fami-shared-ui`**（詞彙：返回、確認、找卡、操作卡、愛心、首頁頭、`.blobs`）。
+- 三端門面細節見 skill **`ios-home-web`**。
+
+## 僅文件／規則的 Wave
+
+只補 AGENTS 或 `.cursor/rules` 時，**不要**改 `gate.js`、`hey.html`、`door.js`、`app.js`、`app.css` 或執行期 `config.js` 行為。
+
+## YRoom
+
+YRoom 硬隔離，不共用 FamiGate 模組或 storage 前綴；僅 stateless UI 詞彙可對齊。勿讓其他 Fami 門面誤連 YRoom 內容。
