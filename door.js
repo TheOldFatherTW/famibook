@@ -509,13 +509,19 @@
     });
   }
 
+  function readProgressTotal(item) {
+    const readTotal = Number(item.read_total) || 0;
+    const pages = Number(item.page_count) || 0;
+    return readTotal > 0 ? readTotal : pages;
+  }
+
   function readLabel(item) {
     if (!item || item.kind === "folder" || item.kind === "org" || item.kind === "job") return "";
     if (item.finished) return "已閱讀";
     if (item.progress == null) return "未閱讀";
-    const pages = Number(item.page_count) || 0;
-    if (pages <= 0) return "未閱讀";
-    const pct = Math.max(1, Math.min(100, Math.round((Number(item.progress) + 1) / pages * 100)));
+    const total = readProgressTotal(item);
+    if (total <= 0) return "未閱讀";
+    const pct = Math.max(1, Math.min(100, Math.round((Number(item.progress) + 1) / total * 100)));
     return pct + "%";
   }
 
