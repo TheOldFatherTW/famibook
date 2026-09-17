@@ -20,10 +20,11 @@ alwaysApply: true
 4. **FamiGate 核心** — 優先共用 `gate.js`；無必要勿 fork。
 5. **標準版個人頁** — 預設完整殼（封面、長押多選、齒輪圖示、首頁頭）；閹割版須先問使用者。
 6. **產品 vs 殼** — 書／相簿／遊戲內容可不同；門面殼不能各做各的。
+7. **修完就推 Pages** — 見同目錄 **`always-push-github.mdc`**（always-on）。只 commit 不 push = 沒改；任務結束前必須 `git push origin main`。
 
 ## 開工前
 
-- 讀 `AGENTS.md` 與 skill **`fami-shared-ui`**（詞彙：返回、確認、找卡、操作卡、愛心、首頁頭、`.blobs`）。
+- 讀 `AGENTS.md`、**`always-push-github.mdc`** 與 skill **`fami-shared-ui`**（詞彙：返回、確認、找卡、操作卡、愛心、首頁頭、`.blobs`）。
 - 三端門面細節見 skill **`ios-home-web`**。
 
 ## 僅文件／規則的 Wave

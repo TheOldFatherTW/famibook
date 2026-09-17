@@ -67,14 +67,16 @@ GitHub Pages（公開門面） → config.js VAULT_ORIGIN → 家裡保險庫（
 
 ## Git 與部署
 
-- 會出現在 GitHub Pages 的門面檔：驗證後 commit 並 push；提高 `?v=` 快取破壞參數。
+- **硬規則（代理必讀）**：`.cursor/rules/always-push-github.mdc`（`alwaysApply: true`）。
+- 會出現在 GitHub Pages 的門面檔：驗證後 **commit + push `main`**；提高 `?v=`。**禁止只留本機 commit**；**禁止**等使用者說「推上去」才 push。本地預覽 ≠ 上線。
+- Pages 網址：https://theoldfathertw.github.io/famibook/
 - 不要推金鑰、照片、PDF、保險庫內部資料。
 - 本庫為 famibook 產品；kodohon、gamepal 應從此範本複製共用政策，再掛各自 `VAULT_ORIGIN` 與產品邏輯。
 
 ## 開工前必讀
 
 1. 本檔 `AGENTS.md`
-2. Cursor 規則：`.cursor/rules/fami-shared.mdc`
+2. Cursor 規則：`.cursor/rules/always-push-github.mdc`、`.cursor/rules/fami-shared.mdc`
 3. Skill：`fami-shared-ui`（詞彙表、bootstrap、標準版個人頁）
 4. 需要三端（iPhone／iPad／桌機）同一門面時：`ios-home-web`
 
