@@ -53,11 +53,13 @@
 <script>
 (function () {
   var KEY_RE = /^[A-Za-z0-9_-]{8,128}$/;
+  var viewKey = (window.FAMIGATE_CONFIG && window.FAMIGATE_CONFIG.viewKeyStorage) || "famibook.viewKey";
+  var cookieRe = new RegExp("(?:^|; )" + viewKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "=([^;]*)");
   var stored = "";
-  try { stored = localStorage.getItem("famibook.viewKey") || ""; } catch (e) {}
+  try { stored = localStorage.getItem(viewKey) || ""; } catch (e) {}
   var cookie = "";
   try {
-    var m = document.cookie.match(/(?:^|; )famibook\.viewKey=([^;]*)/);
+    var m = document.cookie.match(cookieRe);
     cookie = m ? decodeURIComponent(m[1]) : "";
   } catch (e) {}
   var q = new URLSearchParams(location.search).get("k") || "";
@@ -75,7 +77,7 @@
   window.FAMILY_URL_KEY = fromUrl;
   window.FAMILY_VIEW_KEY = token;
   if (token) {
-    try { localStorage.setItem("famibook.viewKey", token); } catch (e) {}
+    try { localStorage.setItem(viewKey, token); } catch (e) {}
     if (typeof navigator.standalone === "boolean" && !navigator.standalone) {
       var pin = location.pathname + "?k=" + encodeURIComponent(token) + "#k=" + encodeURIComponent(token);
       if (location.pathname + location.search + location.hash !== pin) {
@@ -207,7 +209,7 @@
   <iframe id="reader-frame" title="閱讀器" src="about:blank"></iframe>
 </div>
 <script src="./lissajous.js?v=2"></script>
-<script src="./gate.js?v=3"></script>
+<script src="./gate.js?v=4"></script>
 <script src="./host.js?v=34"></script>
 <script src="./door.js?v=42"></script>
 </body>
