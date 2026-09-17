@@ -519,8 +519,21 @@
     return pct + "%";
   }
 
+  function folderTitleText(title) {
+    const max = window.matchMedia("(max-width: 560px)").matches ? 5 : 15;
+    const s = String(title || "");
+    if (s.length <= max) return s;
+    return s.slice(0, max) + "...";
+  }
+
   function epLabel(item) {
     if (!item) return "";
+    if (item.kind === "org") {
+      const title = folderTitleText(item.title || "");
+      if (title) return title;
+      const count = Number(item.page_count) || 0;
+      return count > 1 ? count + "本" : "資料夾";
+    }
     const a = item.volume;
     if (a == null || a === "") return "";
     const b = item.volume_end;
