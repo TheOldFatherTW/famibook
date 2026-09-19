@@ -1,1 +1,1 @@
-window.VAULT_ORIGIN = "https://rates-save-grams-yearly.trycloudflare.com";
+window.VAULT_ORIGIN = "https://concepts-date-courtesy-opponents.trycloudflare.com";
